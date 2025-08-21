@@ -100,32 +100,30 @@ class PasswordResetController extends Controller
     public function resetPassword(Request $request)
     {
         try {
-        // ✅ Validation des champs
-        $request->validate([
-            'token_reset'   => 'required|string|exists:Utilisateur,token_reset',
-            'mot_de_passe'  => 'required|string|min:6|confirmed', 
-            // Laravel attend un champ "mot_de_passe_confirmation"
-        ]);
+            // ✅ Validation des champs
+            $request->validate([
+                'token_reset'   => 'required|string|exists:Utilisateur,token_reset',
+                'mot_de_passe'  => 'required|string|min:6|confirmed', 
+            ]);
 
-        $user = Utilisateur::where('token_reset', $request->token_reset)->first();
-        if (!$user || $user->token_expiration < now()) {
-            return $this->responseError("Token expiré ou invalide", null, 400);
+            $user = Utilisateur::where('token_reset', $request->token_reset)->first();
+
+            if (!$user || $user->token_expiration < now()) {
+                return $this->responseError("Token expiré ou invalide", 400);
+            }
+
+            // ✅ Mise à jour du mot de passe
+            $user->mot_de_passe = Hash::make($request->mot_de_passe);
+            $user->token_reset = null;
+            $user->token_expiration = null;
+            $user->save();
+
+            return $this->responseSuccessMessage("Mot de passe réinitialisé avec succès");
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->responseError(json_encode($e->errors()), 422);
+        } catch (\Exception $e) {
+            return $this->responseError("Erreur lors de la réinitialisation du mot de passe : " . $e->getMessage(), 500);
         }
-
-        // ✅ Mise à jour du mot de passe
-        $user->mot_de_passe = Hash::make($request->mot_de_passe);
-        $user->token_reset = null;
-        $user->token_expiration = null;
-        $user->save();
-
-        return $this->responseSuccessMessage("Mot de passe réinitialisé avec succès");
-    } catch (\Illuminate\Validation\ValidationException $e) {
-
-        return $this->responseError("Erreur de validation", $e->errors(), 422);
-    } catch (\Exception $e) {
-        return $this->responseError("Erreur lors de la réinitialisation du mot de passe", $e->getMessage(), 500);
     }
 
-    
-    }
 }
