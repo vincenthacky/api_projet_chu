@@ -119,8 +119,9 @@ class Souscription extends Model
         return $this->statut_souscription === self::STATUT_ACTIVE;
     }
 
-     public function planpaiements()
+    public function planpaiements()
     {
         return $this->hasMany(PlanPaiement::class, 'id_souscription', 'id_souscription');
     }
+
 }

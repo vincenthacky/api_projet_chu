@@ -80,7 +80,7 @@ class SouscriptionController extends Controller
                 });
             }
 
-            $souscriptions = $query->orderBy('date_souscription', 'desc')
+            $souscriptions = $query->orderBy('created_at', 'asc')
                                 ->paginate($perPage);
 
             // 🔥 On enrichit chaque souscription avec les données calculées

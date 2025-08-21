@@ -16,25 +16,49 @@ class CheckType
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-     public function handle(Request $request, Closure $next, ...$types)
+    public function handle(Request $request, Closure $next, ...$types)
     {
         try {
             $user = JWTAuth::parseToken()->authenticate();
         } catch (Exception $e) {
             if ($e instanceof TokenInvalidException) {
-                return response()->json(['status' => 'Token invalide'], 401);
-            } else if ($e instanceof TokenExpiredException) {
-                return response()->json(['status' => 'Token expiré'], 401);
+                return $this->responseError("Token invalide", 401);
+            } elseif ($e instanceof TokenExpiredException) {
+                return $this->responseError("Token expiré", 401);
             } else {
-                return response()->json(['status' => 'Token manquant'], 401);
+                return $this->responseError("Token manquant", 401);
             }
         }
 
-        // Vérifie si le type correspond
+        // ✅ Vérifie si le type correspond
         if (!in_array($user->type, $types)) {
-            return response()->json(['status' => 'Non autorisé'], 403);
+            return $this->responseError("Non autorisé", 403);
         }
 
         return $next($request);
+    }
+
+    /**
+     * Réponse erreur standardisée
+     */
+    protected function responseError($message, $code = 400)
+    {
+        return response()->json([
+            'success' => false,
+            'status_code' => $code,
+            'message' => $message,
+        ], $code);
+    }
+
+    /**
+     * Réponse succès simple avec message
+     */
+    protected function responseSuccessMessage($message, $code = 200)
+    {
+        return response()->json([
+            'success' => true,
+            'status_code' => $code,
+            'message' => $message,
+        ], $code);
     }
 }
