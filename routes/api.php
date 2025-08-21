@@ -44,7 +44,7 @@ Route::apiResource('statutreclamation', StatutReclamationController::class);
 
 
 
-Route::middleware('type:superAdmin,admin')->group(function () {
+Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
     Route::post('register', [RegisterController::class, 'register']);
