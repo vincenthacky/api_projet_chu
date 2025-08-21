@@ -51,16 +51,16 @@ class AuthController extends Controller
 
 
 
-     /**
+    /**
      * 🚪 Déconnexion (logout)
      */
     public function logout()
     {
         try {
             JWTAuth::invalidate(JWTAuth::getToken());
-            return response()->json(['status' => 'success', 'message' => 'Déconnecté avec succès']);
+            return $this->responseSuccessMessage("Déconnexion effectuée avec succès");
         } catch (JWTException $e) {
-            return response()->json(['error' => 'Erreur lors de la déconnexion'], 500);
+            return $this->responseError("Erreur lors de la déconnexion", 500);
         }
     }
 
@@ -69,8 +69,14 @@ class AuthController extends Controller
      */
     public function me()
     {
-        return response()->json(JWTAuth::parseToken()->authenticate());
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            return $this->responseSuccess($user, "Utilisateur connecté récupéré avec succès");
+        } catch (JWTException $e) {
+            return $this->responseError("Impossible de récupérer l'utilisateur connecté", 500);
+        }
     }
+
 
     
 }
