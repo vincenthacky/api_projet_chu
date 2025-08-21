@@ -68,39 +68,38 @@ class PasswordResetController extends Controller
             // Envoyer l'email de réinitialisation
             Mail::to($user->email)->send(new ResetPasswordMail($user, $user->token_reset));
 
-            // Vérifier si l'email a vraiment été envoyé
             if (count(Mail::failures()) > 0) {
                 // Annuler le token si échec
-                $user->update([
-                    'token_reset' => null,
-                    'token_expiration' => null,
-                ]);
+                $user->update(['token_reset' => null, 'token_expiration' => null]);
 
+                // Utilisation de votre standard : responseError(message, code)
                 return $this->responseError(
                     "Échec de l'envoi de l'email. Veuillez réessayer.",
-                    null,
                     500
                 );
             }
 
-            return $this->responseSuccess([
-                'message' => 'Un email de réinitialisation a été envoyé à votre adresse email.',
-                'email_sent_to' => $user->email,
-                'expires_at' => $user->token_expiration->format('Y-m-d H:i:s'),
-            ]);
+            // Utilisation de votre standard : responseSuccess(data, message)
+            return $this->responseSuccess(
+                [
+                    'email_sent_to' => $user->email,
+                    'expires_at' => $user->token_expiration->format('Y-m-d H:i:s'),
+                ],
+                'Un email de réinitialisation a été envoyé à votre adresse email.'
+            );
 
         } catch (\Exception $e) {
             // En cas d'erreur serveur ou SMTP
-            $user->update([
-                'token_reset' => null,
-                'token_expiration' => null,
-            ]);
+            $user->update(['token_reset' => null, 'token_expiration' => null]);
 
-            return $this->responseError(
-                "Erreur lors de l'envoi de l'email. Veuillez réessayer.",
-                config('app.debug') ? $e->getMessage() : null,
-                500
-            );
+            // Construction du message d'erreur pour le mode debug
+            $errorMessage = "Erreur lors de l'envoi de l'email. Veuillez réessayer.";
+            if (config('app.debug')) {
+                $errorMessage .= ' Détails : ' . $e->getMessage();
+            }
+
+            // Utilisation de votre standard : responseError(message, code)
+            return $this->responseError($errorMessage, 500);
         }
     }
 
