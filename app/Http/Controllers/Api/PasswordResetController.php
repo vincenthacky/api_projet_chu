@@ -59,27 +59,16 @@ class PasswordResetController extends Controller
 
         $user = Utilisateur::where('email', $request->email)->first();
 
-        // Générer un token unique
         $user->token_reset = Str::random(60);
-        $user->token_expiration = now()->addHour(); // valable 1 heure
+        $user->token_expiration = now()->addHour();
         $user->save();
 
         try {
             // Envoyer l'email de réinitialisation
+            // Si cette ligne échoue, le code sautera directement au bloc CATCH
             Mail::to($user->email)->send(new ResetPasswordMail($user, $user->token_reset));
 
-            if (count(Mail::failures()) > 0) {
-                // Annuler le token si échec
-                $user->update(['token_reset' => null, 'token_expiration' => null]);
-
-                // Utilisation de votre standard : responseError(message, code)
-                return $this->responseError(
-                    "Échec de l'envoi de l'email. Veuillez réessayer.",
-                    500
-                );
-            }
-
-            // Utilisation de votre standard : responseSuccess(data, message)
+            // Si on arrive ici, l'envoi a réussi. On retourne une réponse de succès.
             return $this->responseSuccess(
                 [
                     'email_sent_to' => $user->email,
@@ -89,16 +78,17 @@ class PasswordResetController extends Controller
             );
 
         } catch (\Exception $e) {
-            // En cas d'erreur serveur ou SMTP
-            $user->update(['token_reset' => null, 'token_expiration' => null]);
+            // En cas d'erreur (ex: mauvais identifiants SMTP), ce bloc s'exécute
+            $user->update([
+                'token_reset' => null,
+                'token_expiration' => null,
+            ]);
 
-            // Construction du message d'erreur pour le mode debug
             $errorMessage = "Erreur lors de l'envoi de l'email. Veuillez réessayer.";
             if (config('app.debug')) {
                 $errorMessage .= ' Détails : ' . $e->getMessage();
             }
 
-            // Utilisation de votre standard : responseError(message, code)
             return $this->responseError($errorMessage, 500);
         }
     }
