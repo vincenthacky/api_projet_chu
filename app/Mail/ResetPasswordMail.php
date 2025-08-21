@@ -24,9 +24,11 @@ class ResetPasswordMail extends Mailable
         $this->token = $token;
         
         // URL de votre frontend pour la réinitialisation
-        $this->resetUrl = config('app.frontend_url', 'http://192.168.252.208:4200/') 
+        $this->resetUrl = config('app.frontend_url', 'http://localhost:4200/authentification') 
             . '/reset-password?token=' . $token 
             . '&email=' . urlencode($user->email);
+
+            
     }
 
     public function envelope(): Envelope
