@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\SouscriptionController;
 use App\Http\Controllers\Api\StatutReclamationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RegisterController;
+use App\Http\Controllers\Api\PasswordResetController;
 
 /*
 
@@ -23,6 +24,10 @@ BYYYY**********
 // 🔹 auth route
 
 Route::post('login', [AuthController::class, 'login']);
+
+Route::post('/password/send-token', [PasswordResetController::class, 'sendResetToken']);
+Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']);
+
 
 
 
