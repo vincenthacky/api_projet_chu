@@ -40,8 +40,8 @@ Route::apiResource('statutreclamation', StatutReclamationController::class);
 
 
 Route::middleware('type:superAdmin,admin')->group(function () {
-    Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:api');
-    Route::get('me', [AuthController::class, 'me'])->middleware('auth:api');
+    Route::post('logout', [AuthController::class, 'logout']);
+    Route::get('me', [AuthController::class, 'me']);
     Route::post('register', [RegisterController::class, 'register']);
 
 });
