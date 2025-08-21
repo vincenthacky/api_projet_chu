@@ -62,31 +62,56 @@ class SouscriptionController extends Controller
             $perPage = $request->input('per_page', 5);
             $search  = $request->input('search');
 
-             $query = Souscription::with(['terrain', 'admin'])
-            ->where('id_utilisateur', 1);
+            $query = Souscription::with(['terrain', 'admin', 'planpaiements'])
+                ->where('id_utilisateur', 1);
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('id_souscription', 'like', "%{$search}%")
-                      ->orWhere('groupe_souscription', 'like', "%{$search}%")
-                     
-                      ->orWhereHas('terrain', function ($q3) use ($search) {
-                          $q3->where('libelle', 'like', "%{$search}%")
-                             ->orWhere('localisation', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('admin', function ($q4) use ($search) {
-                          $q4->where('nom', 'like', "%{$search}%")
-                             ->orWhere('prenom', 'like', "%{$search}%");
-                      });
+                    ->orWhere('groupe_souscription', 'like', "%{$search}%")
+                    ->orWhereHas('terrain', function ($q3) use ($search) {
+                        $q3->where('libelle', 'like', "%{$search}%")
+                            ->orWhere('localisation', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('admin', function ($q4) use ($search) {
+                        $q4->where('nom', 'like', "%{$search}%")
+                            ->orWhere('prenom', 'like', "%{$search}%");
+                    });
                 });
             }
 
             $souscriptions = $query->orderBy('date_souscription', 'desc')
-                                   ->paginate($perPage);
+                                ->paginate($perPage);
+
+            // 🔥 On enrichit chaque souscription avec les données calculées
+            $souscriptions->getCollection()->transform(function ($souscription) {
+                $prixTotal = $souscription->terrain->prix_unitaire * $souscription->nombre_mensualites;
+                $montantPaye = $souscription->montant_total_souscrit ?? 0;
+                $reste = $prixTotal - $montantPaye;
+
+                // dernier paiement
+                $dernierPaiement = $souscription->planpaiements()
+                                    ->orderBy('date_paiement_effectif', 'desc')
+                                    ->first();
+
+                $dateProchain = null;
+                if ($dernierPaiement && $dernierPaiement->date_paiement_effectif) {
+                    $dateProchain = \Carbon\Carbon::parse($dernierPaiement->date_paiement_effectif)
+                                    ->addMonth()
+                                    ->toDateString();
+                }
+
+                $souscription->prix_total_terrain = $prixTotal;
+                $souscription->montant_paye = $montantPaye;
+                $souscription->reste_a_payer = max($reste, 0);
+                $souscription->date_prochain = $dateProchain;
+
+                return $souscription;
+            });
 
             return $this->responseSuccessPaginate($souscriptions, "Liste des souscriptions");
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
         }
     }

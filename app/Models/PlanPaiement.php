@@ -107,4 +107,6 @@ class PlanPaiement extends Model
     {
         return "Mensualité #{$this->numero_mensualite} - Prévu: {$this->montant_versement_prevu} FCFA - Payé: {$this->montant_paye} FCFA";
     }
+
+    
 }
