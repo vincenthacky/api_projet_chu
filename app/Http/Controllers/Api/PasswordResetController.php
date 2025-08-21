@@ -15,6 +15,42 @@ class PasswordResetController extends Controller
     /**
      * 🔑 Envoyer un token de réinitialisation
      */
+    // public function sendResetToken(Request $request)
+    // {
+    //     $request->validate([
+    //         'email' => 'required|email|exists:Utilisateur,email',
+    //     ]);
+
+    //     $user = Utilisateur::where('email', $request->email)->first();
+        
+    //     // Générer un token unique
+    //     $user->token_reset = Str::random(60);
+    //     $user->token_expiration = now()->addHour(); // valable 1 heure
+    //     $user->save();
+
+    //     try {
+    //         // Envoyer l'email de réinitialisation
+    //         Mail::to($user->email)->send(new ResetPasswordMail($user, $user->token_reset));
+            
+    //          return $this->responseSuccess([
+    //             'message' => 'Un email de réinitialisation a été envoyé à votre adresse email.',
+    //             'email_sent_to' => $user->email,
+    //             'expires_at' => $user->token_expiration->format('Y-m-d H:i:s'),
+    //         ]);
+            
+    //     } catch (\Exception $e) {
+    //         $user->token_reset = null;
+    //         $user->token_expiration = null;
+    //         $user->save();
+            
+    //         return $this->responseError(
+    //             "Erreur lors de l'envoi de l'email. Veuillez réessayer.",
+    //             config('app.debug') ? $e->getMessage() : null,
+    //             500
+    //         );
+    //     }
+    // }
+
     public function sendResetToken(Request $request)
     {
         $request->validate([
@@ -22,7 +58,7 @@ class PasswordResetController extends Controller
         ]);
 
         $user = Utilisateur::where('email', $request->email)->first();
-        
+
         // Générer un token unique
         $user->token_reset = Str::random(60);
         $user->token_expiration = now()->addHour(); // valable 1 heure
@@ -31,18 +67,35 @@ class PasswordResetController extends Controller
         try {
             // Envoyer l'email de réinitialisation
             Mail::to($user->email)->send(new ResetPasswordMail($user, $user->token_reset));
-            
-             return $this->responseSuccess([
+
+            // Vérifier si l'email a vraiment été envoyé
+            if (count(Mail::failures()) > 0) {
+                // Annuler le token si échec
+                $user->update([
+                    'token_reset' => null,
+                    'token_expiration' => null,
+                ]);
+
+                return $this->responseError(
+                    "Échec de l'envoi de l'email. Veuillez réessayer.",
+                    null,
+                    500
+                );
+            }
+
+            return $this->responseSuccess([
                 'message' => 'Un email de réinitialisation a été envoyé à votre adresse email.',
                 'email_sent_to' => $user->email,
                 'expires_at' => $user->token_expiration->format('Y-m-d H:i:s'),
             ]);
-            
+
         } catch (\Exception $e) {
-            $user->token_reset = null;
-            $user->token_expiration = null;
-            $user->save();
-            
+            // En cas d'erreur serveur ou SMTP
+            $user->update([
+                'token_reset' => null,
+                'token_expiration' => null,
+            ]);
+
             return $this->responseError(
                 "Erreur lors de l'envoi de l'email. Veuillez réessayer.",
                 config('app.debug') ? $e->getMessage() : null,
@@ -50,6 +103,7 @@ class PasswordResetController extends Controller
             );
         }
     }
+
 
     /**
      * 🔄 Réinitialiser le mot de passe
