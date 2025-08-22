@@ -15,7 +15,7 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
-    'frontend_url' => env('APP_FRONTEND_URL', 'http://localhost:4200/authentification'),
+    'frontend_url' => env('APP_FRONTEND_URL', 'http://192.168.252.208:4200/authentification'),
 
 
     /*
