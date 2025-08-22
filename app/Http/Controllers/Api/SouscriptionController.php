@@ -126,7 +126,7 @@ class SouscriptionController extends Controller
     public function show($id)
     {
         try {
-            $souscription = Souscription::with(['utilisateur', 'terrain', 'admin'])->findOrFail($id);
+            $souscription = Souscription::with(['utilisateur', 'terrain', 'admin','planpaiements'])->findOrFail($id);
             return $this->responseSuccess($souscription, "Souscription récupérée");
         } catch (Exception $e) {
             return $this->responseError("Souscription introuvable ou erreur : " . $e->getMessage(), 404);
