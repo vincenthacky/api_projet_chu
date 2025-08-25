@@ -127,6 +127,28 @@ class SouscriptionController extends Controller
     {
         try {
             $souscription = Souscription::with(['utilisateur', 'terrain', 'admin','planpaiements'])->findOrFail($id);
+
+            $prixTotal = $souscription->terrain->prix_unitaire * $souscription->nombre_mensualites;
+                $montantPaye = $souscription->montant_total_souscrit ?? 0;
+                $reste = $prixTotal - $montantPaye;
+
+                // dernier paiement
+                $dernierPaiement = $souscription->planpaiements()
+                                    ->orderBy('date_paiement_effectif', 'desc')
+                                    ->first();
+
+                $dateProchain = null;
+                if ($dernierPaiement && $dernierPaiement->date_paiement_effectif) {
+                    $dateProchain = \Carbon\Carbon::parse($dernierPaiement->date_paiement_effectif)
+                                    ->addMonth()
+                                    ->toDateString();
+                }
+
+                $souscription->prix_total_terrain = $prixTotal;
+                $souscription->montant_paye = $montantPaye;
+                $souscription->reste_a_payer = max($reste, 0);
+                $souscription->date_prochain = $dateProchain;
+                
             return $this->responseSuccess($souscription, "Souscription récupérée");
         } catch (Exception $e) {
             return $this->responseError("Souscription introuvable ou erreur : " . $e->getMessage(), 404);
