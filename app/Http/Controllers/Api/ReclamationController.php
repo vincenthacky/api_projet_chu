@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Reclamation;
+use App\Services\DocumentService;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -58,31 +59,53 @@ class ReclamationController extends Controller
     /**
      * Créer une nouvelle réclamation
      */
-    public function store(Request $request)
+    public function store(Request $request, DocumentService $documentService)
     {
         DB::beginTransaction();
         try {
             $request->validate([
-                'id_souscription'     => 'required|exists:Souscription,id_souscription',
-                'titre'               => 'required|string|max:255',
-                'description'         => 'required|string',
-                'type_reclamation'    => 'required|in:anomalie_paiement,information_erronee,document_manquant,avancement_projet,autre',
-                'id_statut_reclamation'=> 'required|exists:StatutReclamation,id_statut_reclamation',
-                'priorite'            => 'nullable|in:basse,normale,haute,urgente',
+                'id_souscription'        => 'required|exists:Souscription,id_souscription',
+                'titre'                  => 'required|string|max:255',
+                'description'            => 'required|string',
+                'type_reclamation'       => 'required|in:anomalie_paiement,information_erronee,document_manquant,avancement_projet,autre',
+                'id_statut_reclamation'  => 'required|exists:StatutReclamation,id_statut_reclamation',
+                'priorite'               => 'nullable|in:basse,normale,haute,urgente',
+                'document'               => 'nullable|file|max:2048', // document facultatif
             ]);
 
-            $reclamation = Reclamation::create($request->all());
+            // Création de la réclamation
+            $reclamation = Reclamation::create($request->only([
+                'id_souscription',
+                'titre',
+                'description',
+                'type_reclamation',
+                'id_statut_reclamation',
+                'priorite'
+            ]));
+
+            // Vérifier si un fichier est attaché → enregistrer via le DocumentService
+            if ($request->hasFile('document')) {
+                $documentService->store(
+                    idSouscription: $request->id_souscription,
+                    libelleTypeDocument: 'Réclamation - ' . $request->titre,
+                    options: [
+                        'source_table'         => 'reclamations',
+                        'source_id'            => $reclamation->id_reclamation, // attention au nom de ta clé primaire
+                        'description_document' => $request->description ?? 'Document lié à la réclamation',
+                    ],
+                    fichier: $request->file('document')
+                );
+            }
 
             DB::commit();
 
-            return $this->responseSuccessMessage("Réclamation créée avec succès", 201);
+            return $this->responseSuccessMessage("Réclamation créée avec succès",  201);
 
         } catch (Exception $e) {
-            DB::rollback();
+            DB::rollBack();
             return $this->responseError("Erreur lors de la création de la réclamation : " . $e->getMessage(), 500);
         }
     }
-
     /**
      * Mettre à jour une réclamation
      */
