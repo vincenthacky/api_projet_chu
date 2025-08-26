@@ -58,6 +58,7 @@ class DocumentService
 
                 $documentData = array_merge($documentData, [
                     'nom_fichier'    => $fichier->getClientOriginalName(),
+                    'nom_original'=> $fichier->getClientOriginalName(),
                     'chemin_fichier' => $chemin,
                     'taille_fichier' => $fichier->getSize(),
                 ]);
