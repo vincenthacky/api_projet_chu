@@ -72,7 +72,7 @@ class EvenementController extends Controller
                 ];
             }
 
-            return $this->responseSuccessPaginate(collect($result), "Liste des événements");
+            return $this->responseSuccessPaginate($result, "Liste des événements");
 
         } catch (Exception $e) {
             return $this->responseError("Erreur lors de la récupération des événements : " . $e->getMessage(), 500);
