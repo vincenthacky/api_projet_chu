@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\StatutReclamationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\RecompenseController;
 use App\Http\Controllers\Api\PasswordResetController;
 
 /*
@@ -40,6 +41,7 @@ Route::apiResource('souscriptions', SouscriptionController::class);
 
 
 Route::apiResource('paiements', PlanPaiementController::class);
+Route::apiResource('recompenses', RecompenseController::class);
 Route::apiResource('reclamations', ReclamationController::class);
 Route::apiResource('documents', DocumentController::class);
 Route::apiResource('statutreclamation', StatutReclamationController::class);
