@@ -51,12 +51,12 @@ class EvenementController extends Controller
             $evenementsPagines = $query->orderBy('date_debut_evenement')
                                     ->paginate($perPage);
 
-            $evenementsPagines->getCollection()->transform(function ($event) {
-                $event->documents_lies = $event->documents;
-                unset($event->documents);
-                $event->mois_annee = Carbon::parse($event->date_debut_evenement)->format('F Y');
-                return $event;
-            });
+            // $evenementsPagines->getCollection()->transform(function ($event) {
+            //     $event->documents_lies = $event->documents;
+            //     unset($event->documents);
+            //     $event->mois_annee = Carbon::parse($event->date_debut_evenement)->format('F Y');
+            //     return $event;
+            // });
 
             return $this->responseSuccessPaginate($evenementsPagines, "Liste des événements");
 
