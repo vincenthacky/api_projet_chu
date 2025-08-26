@@ -29,7 +29,7 @@ class DocumentService
                 ['libelle_type_document' => $libelleTypeDocument],
                 [
                     'description_type'    => $options['description_type'] ?? null,
-                    'extension_autorisee' => $options['extension_autorisee'] ?? 'pdf,jpg,jpeg,png',
+                    'extension_autorisee' => $options['extension_autorisee'] ?? $fichier->getClientOriginalExtension(),
                     'taille_max_mo'       => $options['taille_max_mo'] ?? 5,
                     'est_obligatoire'     => $options['est_obligatoire'] ?? false,
                 ]
@@ -44,10 +44,10 @@ class DocumentService
             ];
 
             if ($fichier) {
-                // Vérification extension autorisée
-                if (!$typeDocument->extensionAutorisee($fichier->getClientOriginalExtension())) {
-                    throw new Exception("Extension non autorisée. Autorisées : " . implode(',', $typeDocument->extensions));
-                }
+                // // Vérification extension autorisée
+                // if (!$typeDocument->extensionAutorisee($fichier->getClientOriginalExtension())) {
+                //     throw new Exception("Extension non autorisée. Autorisées : " . implode(',', $typeDocument->extensions));
+                // }
 
                 // Vérification taille max
                 if ($fichier->getSize() > $typeDocument->tailleMaxOctets) {
