@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SouscriptionController;
 use App\Http\Controllers\Api\StatutReclamationController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\EvenementController;
 use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\RecompenseController;
@@ -41,6 +42,7 @@ Route::apiResource('souscriptions', SouscriptionController::class);
 
 
 Route::apiResource('paiements', PlanPaiementController::class);
+Route::apiResource('evenements', EvenementController::class);
 Route::apiResource('recompenses', RecompenseController::class);
 Route::apiResource('reclamations', ReclamationController::class);
 Route::apiResource('documents', DocumentController::class);
