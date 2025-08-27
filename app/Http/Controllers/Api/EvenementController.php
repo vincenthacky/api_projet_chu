@@ -100,7 +100,7 @@ class EvenementController extends Controller
                                            ->orderBy('libelle_type_evenement', 'asc')
                                            ->get();
 
-            return $this->responseSuccessPaginate([
+            return $this->responseSuccess([
                 'evenements_organises' => $evenementsOrganises,
                 'pagination' => [
                     'current_page' => $evenements->currentPage(),
