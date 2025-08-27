@@ -83,24 +83,29 @@ class SouscriptionController extends Controller
             $souscriptions = $query->orderBy('created_at', 'asc')
                                 ->paginate($perPage);
 
-            // 🔥 On enrichit chaque souscription avec les données calculées
+            // 🔥 Enrichir chaque souscription
             $souscriptions->getCollection()->transform(function ($souscription) {
+
+                // Prix total du terrain
                 $prixTotal = $souscription->terrain->prix_unitaire * $souscription->nombre_mensualites;
-                $montantPaye = $souscription->montant_total_souscrit ?? 0;
+
+                // Montant payé = somme des paiements effectués dans PlanPaiement
+                $montantPaye = $souscription->planpaiements()
+                                    ->whereNotNull('date_paiement_effectif')
+                                    ->sum('montant_paye');
+
+                // Reste à payer
                 $reste = $prixTotal - $montantPaye;
 
-                // dernier paiement
-                $dernierPaiement = $souscription->planpaiements()
-                                    ->orderBy('date_paiement_effectif', 'desc')
-                                    ->first();
+                // Prochain paiement prévu
+                $prochainPaiement = $souscription->planpaiements()
+                                        ->whereNull('date_paiement_effectif')
+                                        ->orderBy('date_limite_versement', 'asc')
+                                        ->first();
 
-                $dateProchain = null;
-                if ($dernierPaiement && $dernierPaiement->date_paiement_effectif) {
-                    $dateProchain = \Carbon\Carbon::parse($dernierPaiement->date_paiement_effectif)
-                                    ->addMonth()
-                                    ->toDateString();
-                }
+                $dateProchain = $prochainPaiement ? $prochainPaiement->date_limite_versement : null;
 
+                // Injecter dans l’objet retourné
                 $souscription->prix_total_terrain = $prixTotal;
                 $souscription->montant_paye = $montantPaye;
                 $souscription->reste_a_payer = max($reste, 0);
@@ -115,6 +120,7 @@ class SouscriptionController extends Controller
             return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
         }
     }
+
 
 
 
