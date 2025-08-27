@@ -13,9 +13,7 @@ use App\Http\Controllers\Api\RecompenseController;
 use App\Http\Controllers\Api\PasswordResetController;
 
 /*
-
 BYYYY**********
-
 
     ****  *      *********            ********        ****        ****   ****    ****.
     ****    *    *********            ****   *       ******       ****   ****    ****
@@ -27,18 +25,15 @@ BYYYY**********
 // 🔹 auth route
 
 Route::post('login', [AuthController::class, 'login']);
-
 Route::post('/password/send-token', [PasswordResetController::class, 'sendResetToken']);
 Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']);
-
-
+Route::post('/password/update', [AuthController::class, 'updatePassword']);
 
 
 
 // ✅ Route RESTful avec apiResource
 Route::get('souscriptions/utilisateur', [SouscriptionController::class, 'indexUtilisateur']);
 Route::apiResource('souscriptions', SouscriptionController::class);
-
 
 
 Route::apiResource('paiements', PlanPaiementController::class);
@@ -54,7 +49,6 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
     Route::post('register', [RegisterController::class, 'register']);
-
 });
 
 
@@ -85,15 +79,3 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
 
 
 
-
-
-
-
-
-// ✅ Si tu veux ajouter des actions personnalisées
-// Route::controller(SouscriptionController::class)->group(function () {
-//     Route::get('souscriptions/utilisateur/{id}', 'getByUtilisateur'); // toutes les souscriptions d’un utilisateur
-//     Route::post('souscriptions/{id}/resilier', 'resilier'); // résiliation
-//     Route::post('souscriptions/{id}/suspendre', 'suspendre'); // suspension
-//     Route::post('souscriptions/{id}/reactiver', 'reactiver'); // réactivation
-// });
