@@ -28,6 +28,9 @@ class EvenementController extends Controller
      /**
      * Affiche la liste des événements organisés par type puis par mois/année
      */
+  /**
+     * Affiche la liste des événements organisés par type puis par mois/année
+     */
     public function index(Request $request)
     {
         try {
@@ -92,11 +95,13 @@ class EvenementController extends Controller
             // Organisation des données par type puis par mois/année
             $evenementsOrganises = $this->organiserEvenements($evenements->items());
 
-            
+            // Récupération des types d'événements pour les filtres
+            $typesEvenements = TypeEvenement::orderBy('ordre_affichage', 'asc')
+                                           ->orderBy('libelle_type_evenement', 'asc')
+                                           ->get();
 
-            return $this->responseSuccess([
+            return $this->responseSuccessPaginate([
                 'evenements_organises' => $evenementsOrganises,
-                //'types_evenements' => $typesEvenements,
                 'pagination' => [
                     'current_page' => $evenements->currentPage(),
                     'last_page' => $evenements->lastPage(),
@@ -105,13 +110,15 @@ class EvenementController extends Controller
                     'from' => $evenements->firstItem(),
                     'to' => $evenements->lastItem()
                 ],
-                // 'filtres' => [
-                //     'search' => $search,
-                //     'type_evenement' => $typeFilter,
-                //     'statut' => $statutFilter,
-                //     'annee' => $anneeFilter,
-                //     'mois' => $moisFilter
-                // ]
+                'filtres' => [
+                    'search' => $search,
+                    'type_evenement' => $typeFilter,
+                    'statut' => $statutFilter,
+                    'annee' => $anneeFilter,
+                    'mois' => $moisFilter
+                ],
+                'types_evenements_disponibles' => $typesEvenements,
+                'statistiques' => $this->obtenirStatistiques($evenements->items())
             ], "Liste des événements organisés");
 
         } catch (Exception $e) {
@@ -154,23 +161,25 @@ class EvenementController extends Controller
      */
     private function organiserEvenements($evenements)
     {
-        $evenementsOrganises = [];
+        $evenementsTemporaires = [];
 
+        // Phase 1: Organiser avec clés temporaires pour faciliter les regroupements
         foreach ($evenements as $evenement) {
+            $typeId = $evenement->id_type_evenement ?? 0;
             $typeLibelle = $evenement->typeEvenement ? $evenement->typeEvenement->libelle_type_evenement : 'Non catégorisé';
             $date = Carbon::parse($evenement->date_debut_evenement);
             $moisAnnee = $this->getLibelleMoisAnnee($date);
             
-            // Initialisation de la structure si nécessaire
-            if (!isset($evenementsOrganises[$typeLibelle])) {
-                $evenementsOrganises[$typeLibelle] = [
+            // Initialisation de la structure temporaire si nécessaire
+            if (!isset($evenementsTemporaires[$typeId])) {
+                $evenementsTemporaires[$typeId] = [
                     'type_info' => $evenement->typeEvenement,
                     'mois' => []
                 ];
             }
             
-            if (!isset($evenementsOrganises[$typeLibelle]['mois'][$moisAnnee])) {
-                $evenementsOrganises[$typeLibelle]['mois'][$moisAnnee] = [
+            if (!isset($evenementsTemporaires[$typeId]['mois'][$moisAnnee])) {
+                $evenementsTemporaires[$typeId]['mois'][$moisAnnee] = [
                     'libelle' => $moisAnnee,
                     'evenements' => []
                 ];
@@ -179,8 +188,43 @@ class EvenementController extends Controller
             // Enrichissement de l'événement
             $evenementEnrichi = $this->enrichirEvenement($evenement);
             
-            $evenementsOrganises[$typeLibelle]['mois'][$moisAnnee]['evenements'][] = $evenementEnrichi;
+            $evenementsTemporaires[$typeId]['mois'][$moisAnnee]['evenements'][] = $evenementEnrichi;
         }
+
+        // Phase 2: Transformer en tableau avec structure fixe
+        $evenementsOrganises = [];
+        
+        foreach ($evenementsTemporaires as $typeData) {
+            // Convertir les mois en tableau
+            $moisArray = [];
+            foreach ($typeData['mois'] as $moisData) {
+                $moisArray[] = $moisData;
+            }
+            
+            // Trier les mois par ordre chronologique décroissant
+            usort($moisArray, function($a, $b) {
+                return $this->comparerMoisAnnee($b['libelle'], $a['libelle']);
+            });
+            
+            $evenementsOrganises[] = [
+                'type_info' => $typeData['type_info'],
+                'mois' => $moisArray
+            ];
+        }
+
+        // Trier les types par ordre d'affichage
+        usort($evenementsOrganises, function($a, $b) {
+            $ordreA = $a['type_info']['ordre_affichage'] ?? 999;
+            $ordreB = $b['type_info']['ordre_affichage'] ?? 999;
+            
+            if ($ordreA === $ordreB) {
+                $libelleA = $a['type_info']['libelle_type_evenement'] ?? '';
+                $libelleB = $b['type_info']['libelle_type_evenement'] ?? '';
+                return strcoll($libelleA, $libelleB);
+            }
+            
+            return $ordreA <=> $ordreB;
+        });
 
         return $evenementsOrganises;
     }
@@ -243,6 +287,35 @@ class EvenementController extends Controller
         ];
         
         return $mois[$date->month] . ' ' . $date->year;
+    }
+
+    /**
+     * Compare deux libellés mois/année pour le tri chronologique
+     */
+    private function comparerMoisAnnee($moisAnnee1, $moisAnnee2)
+    {
+        $moisNoms = [
+            'Janvier' => 1, 'Février' => 2, 'Mars' => 3, 'Avril' => 4,
+            'Mai' => 5, 'Juin' => 6, 'Juillet' => 7, 'Août' => 8,
+            'Septembre' => 9, 'Octobre' => 10, 'Novembre' => 11, 'Décembre' => 12
+        ];
+
+        // Extraire mois et année de chaque libellé
+        $parts1 = explode(' ', $moisAnnee1);
+        $parts2 = explode(' ', $moisAnnee2);
+        
+        $annee1 = (int)$parts1[1];
+        $annee2 = (int)$parts2[1];
+        
+        $mois1 = $moisNoms[$parts1[0]] ?? 1;
+        $mois2 = $moisNoms[$parts2[0]] ?? 1;
+
+        // Comparaison: d'abord par année, puis par mois
+        if ($annee1 !== $annee2) {
+            return $annee1 <=> $annee2;
+        }
+        
+        return $mois1 <=> $mois2;
     }
 
     /**
@@ -315,6 +388,63 @@ class EvenementController extends Controller
         return $debut->format('d/m/Y') . ' - ' . $fin->format('d/m/Y');
     }
 
+    /**
+     * Calcule les statistiques des événements
+     */
+    private function obtenirStatistiques($evenements)
+    {
+        $total = count($evenements);
+        $statistiques = [
+            'total_evenements' => $total,
+            'par_statut' => [
+                'planifie' => 0,
+                'en_cours' => 0,
+                'termine' => 0,
+                'annule' => 0,
+                'reporte' => 0,
+                'suspendu' => 0
+            ],
+            'par_type' => [],
+            'avancement_moyen' => 0,
+            'cout_total_estime' => 0,
+            'cout_total_reel' => 0
+        ];
+
+        if ($total === 0) {
+            return $statistiques;
+        }
+
+        $sommeAvancement = 0;
+        
+        foreach ($evenements as $evenement) {
+            // Statistiques par statut
+            $statut = $evenement->statut_evenement;
+            if (isset($statistiques['par_statut'][$statut])) {
+                $statistiques['par_statut'][$statut]++;
+            }
+
+            // Statistiques par type
+            $typeLibelle = $evenement->typeEvenement ? 
+                          $evenement->typeEvenement->libelle_type_evenement : 
+                          'Non catégorisé';
+            
+            if (!isset($statistiques['par_type'][$typeLibelle])) {
+                $statistiques['par_type'][$typeLibelle] = 0;
+            }
+            $statistiques['par_type'][$typeLibelle]++;
+
+            // Avancement moyen
+            $sommeAvancement += $evenement->niveau_avancement_pourcentage ?? 0;
+
+            // Coûts
+            $statistiques['cout_total_estime'] += (float)($evenement->cout_estime ?? 0);
+            $statistiques['cout_total_reel'] += (float)($evenement->cout_reel ?? 0);
+        }
+
+        $statistiques['avancement_moyen'] = round($sommeAvancement / $total, 1);
+
+        return $statistiques;
+    }
 
     
     /**
