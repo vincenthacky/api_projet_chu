@@ -110,14 +110,14 @@ class EvenementController extends Controller
                     'from' => $evenements->firstItem(),
                     'to' => $evenements->lastItem()
                 ],
-                'filtres' => [
-                    'search' => $search,
-                    'type_evenement' => $typeFilter,
-                    'statut' => $statutFilter,
-                    'annee' => $anneeFilter,
-                    'mois' => $moisFilter
-                ],
-                'types_evenements_disponibles' => $typesEvenements,
+                // 'filtres' => [
+                //     'search' => $search,
+                //     'type_evenement' => $typeFilter,
+                //     'statut' => $statutFilter,
+                //     'annee' => $anneeFilter,
+                //     'mois' => $moisFilter
+                // ],
+                //'types_evenements_disponibles' => $typesEvenements,
                 'statistiques' => $this->obtenirStatistiques($evenements->items())
             ], "Liste des événements organisés");
 
