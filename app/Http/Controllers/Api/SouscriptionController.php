@@ -132,34 +132,41 @@ class SouscriptionController extends Controller
     public function show($id)
     {
         try {
-            $souscription = Souscription::with(['utilisateur', 'terrain', 'admin','planpaiements'])->findOrFail($id);
+            $souscription = Souscription::with(['utilisateur', 'terrain', 'admin', 'planpaiements'])
+                ->findOrFail($id);
 
+            // Prix total du terrain
             $prixTotal = $souscription->terrain->prix_unitaire * $souscription->nombre_mensualites;
-                $montantPaye = $souscription->montant_total_souscrit ?? 0;
-                $reste = $prixTotal - $montantPaye;
 
-                // dernier paiement
-                $dernierPaiement = $souscription->planpaiements()
-                                    ->orderBy('date_paiement_effectif', 'desc')
+            // Montant réellement payé dans PlanPaiement
+            $montantPaye = $souscription->planpaiements()
+                                ->whereNotNull('date_paiement_effectif')
+                                ->sum('montant_paye');
+
+            // Reste à payer
+            $reste = $prixTotal - $montantPaye;
+
+            // Prochain paiement prévu
+            $prochainPaiement = $souscription->planpaiements()
+                                    ->whereNull('date_paiement_effectif')
+                                    ->orderBy('date_limite_versement', 'asc')
                                     ->first();
 
-                $dateProchain = null;
-                if ($dernierPaiement && $dernierPaiement->date_paiement_effectif) {
-                    $dateProchain = \Carbon\Carbon::parse($dernierPaiement->date_paiement_effectif)
-                                    ->addMonth()
-                                    ->toDateString();
-                }
+            $dateProchain = $prochainPaiement ? $prochainPaiement->date_limite_versement : null;
 
-                $souscription->prix_total_terrain = $prixTotal;
-                $souscription->montant_paye = $montantPaye;
-                $souscription->reste_a_payer = max($reste, 0);
-                $souscription->date_prochain = $dateProchain;
-                
+            // Injection des champs calculés
+            $souscription->prix_total_terrain = $prixTotal;
+            $souscription->montant_paye = $montantPaye;
+            $souscription->reste_a_payer = max($reste, 0);
+            $souscription->date_prochain = $dateProchain;
+
             return $this->responseSuccess($souscription, "Souscription récupérée");
-        } catch (Exception $e) {
+
+        } catch (\Exception $e) {
             return $this->responseError("Souscription introuvable ou erreur : " . $e->getMessage(), 404);
         }
     }
+
 
     /**
      * Créer une nouvelle souscriptiondddepaul
