@@ -92,14 +92,11 @@ class EvenementController extends Controller
             // Organisation des données par type puis par mois/année
             $evenementsOrganises = $this->organiserEvenements($evenements->items());
 
-            // Récupération des types d'événements pour les filtres
-            $typesEvenements = TypeEvenement::orderBy('ordre_affichage', 'asc')
-                                           ->orderBy('libelle_type_evenement', 'asc')
-                                           ->get();
+            
 
             return $this->responseSuccess([
                 'evenements_organises' => $evenementsOrganises,
-                'types_evenements' => $typesEvenements,
+                //'types_evenements' => $typesEvenements,
                 'pagination' => [
                     'current_page' => $evenements->currentPage(),
                     'last_page' => $evenements->lastPage(),
@@ -108,13 +105,13 @@ class EvenementController extends Controller
                     'from' => $evenements->firstItem(),
                     'to' => $evenements->lastItem()
                 ],
-                'filtres' => [
-                    'search' => $search,
-                    'type_evenement' => $typeFilter,
-                    'statut' => $statutFilter,
-                    'annee' => $anneeFilter,
-                    'mois' => $moisFilter
-                ]
+                // 'filtres' => [
+                //     'search' => $search,
+                //     'type_evenement' => $typeFilter,
+                //     'statut' => $statutFilter,
+                //     'annee' => $anneeFilter,
+                //     'mois' => $moisFilter
+                // ]
             ], "Liste des événements organisés");
 
         } catch (Exception $e) {
