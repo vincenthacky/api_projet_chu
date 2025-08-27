@@ -24,47 +24,40 @@ class EvenementController extends Controller
     /**
      * Liste paginée des événements regroupés par type et mois.
      */
+
      public function index(Request $request)
     {
         try {
             $perPage = $request->input('per_page', 15);
             $search  = $request->input('search');
-            $idSouscription = $request->input('id_souscription');
+            $estPublic = $request->input('est_public'); // filtrage conditionnel
 
-            $query = Evenement::with(['documents.typeDocument', 'typeEvenement'])
-                ->where(function ($q) use ($idSouscription) {
-                    $q->where('id_souscription', $idSouscription)
-                    ->orWhere(function ($q2) {
-                        $q2->whereNull('id_souscription')
-                            ->where('est_public', 1);
-                    });
-                });
+            $query = Evenement::with(['documents.typeDocument', 'typeEvenement']);
 
+            // Appliquer le filtre seulement si "est_public" est spécifié
+            if (!is_null($estPublic)) {
+                $query->where('est_public', $estPublic);
+            }
+
+            // Recherche
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('titre', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%")
-                    ->orWhere('lieu', 'like', "%{$search}%");
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('lieu', 'like', "%{$search}%");
                 });
             }
 
             $evenementsPagines = $query->orderBy('date_debut_evenement')
-                                    ->paginate($perPage);
-
-            // $evenementsPagines->getCollection()->transform(function ($event) {
-            //     $event->documents_lies = $event->documents;
-            //     unset($event->documents);
-            //     $event->mois_annee = Carbon::parse($event->date_debut_evenement)->format('F Y');
-            //     return $event;
-            // });
+                ->paginate($perPage);
 
             return $this->responseSuccessPaginate($evenementsPagines, "Liste des événements");
-
         } catch (Exception $e) {
             return $this->responseError("Erreur lors de la récupération des événements : " . $e->getMessage(), 500);
         }
     }
 
+    
     /**
      * Récupérer un événement spécifique par ID
      */
