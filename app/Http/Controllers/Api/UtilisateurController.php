@@ -125,15 +125,11 @@ class UtilisateurController extends Controller
                 'prenom'     => 'sometimes|string|max:100',
                 'email'      => 'sometimes|email|unique:Utilisateur,email,' . $utilisateur->id_utilisateur . ',id_utilisateur',
                 'telephone'  => 'sometimes|string|max:20',
-                'mot_de_passe' => 'sometimes|string|min:6',
                 'type'       => 'sometimes|in:user,admin',
                 'statut_utilisateur' => 'sometimes|in:actif,suspendu,inactif',
             ]);
 
             $data = $request->all();
-            if ($request->filled('mot_de_passe')) {
-                $data['mot_de_passe'] = Hash::make($request->mot_de_passe);
-            }
 
             $utilisateur->update($data);
 
