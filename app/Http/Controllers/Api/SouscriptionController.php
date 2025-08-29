@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Souscription;
+use App\Models\Utilisateur;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -177,16 +178,31 @@ class SouscriptionController extends Controller
     {
         DB::beginTransaction();
         try {
+            $user = JWTAuth::parseToken()->authenticate(); // admin connecté
+
             $request->validate([
                 'id_utilisateur'     => 'required|exists:Utilisateur,id_utilisateur',
                 'id_terrain'         => 'required|exists:Terrain,id_terrain',
-                'id_admin'           => 'required|exists:Utilisateur,id_utilisateur',
-                'nombre_terrains'    => 'required|integer|min:1',
-                'montant_mensuel'    => 'required|numeric|min:0',
-                'nombre_mensualites' => 'required|integer|min:1',
+                'nombre_terrains'    => 'somtime|integer|min:1',
+                'montant_mensuel'    => 'sometime|numeric|min:0',
+                'nombre_mensualites' => 'sometime|integer|min:1',
             ]);
 
-            $souscription = Souscription::create($request->all());
+            // Vérifier si l’utilisateur cible est bien de type "user"
+            $utilisateur = Utilisateur::find($request->id_utilisateur);
+            if (!$utilisateur || $utilisateur->type !== 'user') {
+                return $this->responseError("L'utilisateur doit être de type 'user' pour créer une souscription.", 403);
+            }
+
+            // Création de la souscription (on ajoute l'admin connecté automatiquement)
+            $souscription = Souscription::create([
+                'id_utilisateur'     => $request->id_utilisateur,
+                'id_terrain'         => $request->id_terrain,
+                'id_admin'           => $user->id_utilisateur, // admin connecté
+                'nombre_terrains'    => $request->nombre_terrains ?? 1,
+                'montant_mensuel'    => $request->montant_mensuel ?? 64400,
+                'nombre_mensualites' => $request->nombre_mensualites ?? 24,
+            ]);
 
             DB::commit();
 
@@ -197,6 +213,8 @@ class SouscriptionController extends Controller
             return $this->responseError("Erreur lors de la création de la souscription : " . $e->getMessage(), 500);
         }
     }
+
+
 
     /**
      * Mettre à jour une souscription
