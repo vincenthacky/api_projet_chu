@@ -30,28 +30,21 @@ Route::post('/password/send-token', [PasswordResetController::class, 'sendResetT
 Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']);
 Route::post('/password/update', [AuthController::class, 'updatePassword']);
 
-
-
-// ✅ Route RESTful avec apiResource
-Route::get('souscriptions/utilisateur', [SouscriptionController::class, 'indexUtilisateur']);
-Route::get('reclamations/utilisateur', [ReclamationController::class, 'indexUtilisateur']);
-Route::get('recompenses/utilisateur', [RecompenseController::class, 'indexUtilisateur']);
-Route::get('plan-paiements/utilisateur', [PlanPaiementController::class, 'indexUtilisateur']);
-Route::get('documents/utilisateur', [DocumentController::class, 'indexUtilisateur']);
-
-Route::apiResource('souscriptions', SouscriptionController::class);
-Route::apiResource('utilisateurs', UtilisateurController::class);
-
-Route::apiResource('paiements', PlanPaiementController::class);
-Route::apiResource('evenements', EvenementController::class);
-Route::apiResource('recompenses', RecompenseController::class);
-Route::apiResource('reclamations', ReclamationController::class);
-Route::apiResource('documents', DocumentController::class);
-Route::apiResource('statutreclamation', StatutReclamationController::class);
-
-
-
 Route::middleware('type:superAdmin,admin,user')->group(function () {
+    Route::get('souscriptions/utilisateur', [SouscriptionController::class, 'indexUtilisateur']);
+    Route::get('reclamations/utilisateur', [ReclamationController::class, 'indexUtilisateur']);
+    Route::get('recompenses/utilisateur', [RecompenseController::class, 'indexUtilisateur']);
+    Route::get('paiements/utilisateur', [PlanPaiementController::class, 'indexUtilisateur']);
+    Route::get('documents/utilisateur', [DocumentController::class, 'indexUtilisateur']);
+
+    Route::apiResource('souscriptions', SouscriptionController::class);
+    Route::apiResource('utilisateurs', UtilisateurController::class);
+    Route::apiResource('paiements', PlanPaiementController::class);
+    Route::apiResource('evenements', EvenementController::class);
+    Route::apiResource('recompenses', RecompenseController::class);
+    Route::apiResource('reclamations', ReclamationController::class);
+    Route::apiResource('documents', DocumentController::class);
+    Route::apiResource('statutreclamation', StatutReclamationController::class);
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
     Route::post('register', [RegisterController::class, 'register']);
