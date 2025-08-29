@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\RecompenseController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\UtilisateurController;
 
 /*
 BYYYY**********
@@ -39,7 +40,7 @@ Route::get('plan-paiements/utilisateur', [PlanPaiementController::class, 'indexU
 Route::get('documents/utilisateur', [DocumentController::class, 'indexUtilisateur']);
 
 Route::apiResource('souscriptions', SouscriptionController::class);
-
+Route::apiResource('utilisateurs', UtilisateurController::class);
 
 Route::apiResource('paiements', PlanPaiementController::class);
 Route::apiResource('evenements', EvenementController::class);
