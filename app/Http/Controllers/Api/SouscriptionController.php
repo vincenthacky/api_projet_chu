@@ -179,13 +179,12 @@ class SouscriptionController extends Controller
         DB::beginTransaction();
         try {
             $user = JWTAuth::parseToken()->authenticate(); // admin connecté
-
             $request->validate([
                 'id_utilisateur'     => 'required|exists:Utilisateur,id_utilisateur',
                 'id_terrain'         => 'required|exists:Terrain,id_terrain',
-                'nombre_terrains'    => 'somtime|integer|min:1',
-                'montant_mensuel'    => 'sometime|numeric|min:0',
-                'nombre_mensualites' => 'sometime|integer|min:1',
+                'nombre_terrains'    => 'sometimes|integer|min:1',
+                'montant_mensuel'    => 'sometimes|numeric|min:0',
+                'nombre_mensualites' => 'sometimes|integer|min:1',
             ]);
 
             // Vérifier si l’utilisateur cible est bien de type "user"
@@ -196,13 +195,11 @@ class SouscriptionController extends Controller
 
             // Création de la souscription (on ajoute l'admin connecté automatiquement)
             $souscription = Souscription::create([
-                'id_utilisateur'     => $request->id_utilisateur,
-                'id_terrain'         => $request->id_terrain,
-                'id_admin'           => $user->id_utilisateur, // admin connecté
-                'nombre_terrains'    => $request->nombre_terrains ?? 1,
-                'montant_mensuel'    => $request->montant_mensuel ?? 64400,
-                'nombre_mensualites' => $request->nombre_mensualites ?? 24,
+                'id_utilisateur' => $request->id_utilisateur,
+                'id_terrain'     => $request->id_terrain,
+                'id_admin'       => $user->id_utilisateur,
             ]);
+
 
             DB::commit();
 
