@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\DocumentService;
 use App\Models\Document;
-use App\Models\TypeDocument;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -30,6 +30,46 @@ class DocumentController extends Controller
             $search  = $request->input('search');
 
             $query = Document::with(['souscription', 'typeDocument']);
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nom_fichier', 'like', "%{$search}%")
+                      ->orWhere('nom_original', 'like', "%{$search}%")
+                      ->orWhere('chemin_fichier', 'like', "%{$search}%")
+                      ->orWhere('description_document', 'like', "%{$search}%")
+                      ->orWhereHas('souscription', function ($q2) use ($search) {
+                          $q2->where('groupe_souscription', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('typeDocument', function ($q3) use ($search) {
+                          $q3->where('libelle_type_document', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            $documents = $query->orderBy('date_telechargement', 'desc')
+                               ->paginate($perPage);
+
+            return $this->responseSuccessPaginate($documents, "Liste des documents");
+
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des documents : " . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Récupérer tous les documents avec pagination et recherche.
+     */
+    public function indexUtilisateur(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 15);
+            $search  = $request->input('search');
+            $user = JWTAuth::parseToken()->authenticate();
+
+           $query = Document::with(['souscription', 'typeDocument'])
+            ->whereHas('souscription', function ($q) use ($user) {
+                $q->where('id_utilisateur', $user->id_utilisateur);
+            });
 
             if ($search) {
                 $query->where(function ($q) use ($search) {

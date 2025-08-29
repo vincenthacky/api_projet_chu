@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Reclamation;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Services\DocumentService;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -42,6 +43,44 @@ class ReclamationController extends Controller
             return $this->responseError("Erreur lors de la récupération des réclamations : " . $e->getMessage(), 500);
         }
     }
+
+     /**
+     * Récupère toutes les réclamations avec pagination et recherche avancée.
+     */
+    public function indexUtilisateur(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 15);
+            $search  = $request->input('search');
+            $user = JWTAuth::parseToken()->authenticate();
+
+
+            $query = Reclamation::with(['souscription', 'statut'])
+             ->whereHas('souscription', function ($q) use ($user) {
+                $q->where('id_utilisateur', $user->id_utilisateur);
+            });
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('id_reclamation', 'like', "%{$search}%")
+                      ->orWhere('titre', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhereHas('souscription', function ($q2) use ($search) {
+                          $q2->where('groupe_souscription', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            $reclamations = $query->orderBy('date_reclamation', 'desc')
+                                  ->paginate($perPage);
+
+            return $this->responseSuccessPaginate($reclamations, "Liste des réclamations");
+
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des réclamations : " . $e->getMessage(), 500);
+        }
+    }
+
 
     /**
      * Récupérer une seule réclamation

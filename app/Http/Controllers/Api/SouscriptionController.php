@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Souscription;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -61,9 +62,10 @@ class SouscriptionController extends Controller
         try {
             $perPage = $request->input('per_page', 5);
             $search  = $request->input('search');
+            $user = JWTAuth::parseToken()->authenticate();
 
             $query = Souscription::with(['terrain', 'admin', 'planpaiements'])
-                ->where('id_utilisateur', 1);
+                ->where('id_utilisateur', $user->id_utilisateur);
 
             if ($search) {
                 $query->where(function ($q) use ($search) {

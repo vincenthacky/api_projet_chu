@@ -21,14 +21,8 @@ class EvenementController extends Controller
     }
 
 
-    /**
-     * Liste paginée des événements regroupés par type et mois.
-     */
 
      /**
-     * Affiche la liste des événements organisés par type puis par mois/année
-     */
-  /**
      * Affiche la liste des événements organisés par type puis par mois/année
      */
     public function index(Request $request)
@@ -110,14 +104,7 @@ class EvenementController extends Controller
                     'from' => $evenements->firstItem(),
                     'to' => $evenements->lastItem()
                 ],
-                // 'filtres' => [
-                //     'search' => $search,
-                //     'type_evenement' => $typeFilter,
-                //     'statut' => $statutFilter,
-                //     'annee' => $anneeFilter,
-                //     'mois' => $moisFilter
-                // ],
-                //'types_evenements_disponibles' => $typesEvenements,
+                
                 'statistiques' => $this->obtenirStatistiques($evenements->items())
             ], "Liste des événements organisés");
 

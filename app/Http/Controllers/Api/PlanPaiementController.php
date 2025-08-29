@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PlanPaiement;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Souscription;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -65,6 +66,67 @@ class PlanPaiementController extends Controller
             return $this->responseError("Erreur lors de la récupération des paiements : " . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Récupère tous les paiements avec pagination et recherche avancée.
+     */
+    public function indexUilisateur(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 15);
+            $search  = $request->input('search');
+            $user = JWTAuth::parseToken()->authenticate();
+
+          $query = PlanPaiement::with(['souscription'])
+        ->whereHas('souscription', function ($q) use ($user) {
+            $q->where('id_utilisateur', $user->id_utilisateur);
+        });
+
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('id_plan_paiement', 'like', "%{$search}%")
+                      ->orWhere('numero_mensualite', 'like', "%{$search}%")
+                      ->orWhereHas('souscription', function ($q2) use ($search) {
+                          $q2->where('groupe_souscription', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            $paiements = $query->orderBy('date_limite_versement', 'desc')
+                               ->paginate($perPage);
+
+
+            // Calcul des statistiques
+            $totals = [
+                'total_mensualites' => PlanPaiement::count(),
+                'total_paye_a_temps' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_PAYE_A_TEMPS)->count(),
+                'total_en_retard' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_PAYE_EN_RETARD)->count(),
+                'total_en_attente' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_EN_ATTENTE)->count(),
+            ];
+
+            return response()->json([
+            'success' => true,
+            'status_code' => 200,
+            'message' => "Liste des paiements récupérée avec succès",
+            'data' => $paiements->items(),
+            'pagination' => [
+                'total' => $paiements->total(),
+                'per_page' => $paiements->perPage(),
+                'current_page' => $paiements->currentPage(),
+                'last_page' => $paiements->lastPage(),
+                'from' => $paiements->firstItem(),
+                'to' => $paiements->lastItem(),
+            ],
+            'statistiques' => $totals,
+            ]);
+
+
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des paiements : " . $e->getMessage(), 500);
+        }
+    }
+
 
     /**
      * Récupérer un seul paiement

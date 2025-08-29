@@ -33,6 +33,11 @@ Route::post('/password/update', [AuthController::class, 'updatePassword']);
 
 // ✅ Route RESTful avec apiResource
 Route::get('souscriptions/utilisateur', [SouscriptionController::class, 'indexUtilisateur']);
+Route::get('reclamations/utilisateur', [ReclamationController::class, 'indexUtilisateur']);
+Route::get('recompenses/utilisateur', [RecompenseController::class, 'indexUtilisateur']);
+Route::get('plan-paiements/utilisateur', [PlanPaiementController::class, 'indexUtilisateur']);
+Route::get('documents/utilisateur', [DocumentController::class, 'indexUtilisateur']);
+
 Route::apiResource('souscriptions', SouscriptionController::class);
 
 

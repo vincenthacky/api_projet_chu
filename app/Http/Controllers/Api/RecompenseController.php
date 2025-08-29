@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Recompense;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Services\DocumentService;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -21,6 +22,46 @@ class RecompenseController extends Controller
             $search  = $request->input('search');
 
             $query = Recompense::with(['souscription.utilisateur', 'typeRecompense']);
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('id_recompense', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhere('motif_recompense', 'like', "%{$search}%")
+                      ->orWhere('periode_merite', 'like', "%{$search}%")
+                      ->orWhereHas('typeRecompense', function ($q2) use ($search) {
+                          $q2->where('libelle_type_recompense', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('souscription', function ($q3) use ($search) {
+                          $q3->where('groupe_souscription', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            $recompenses = $query->orderBy('date_attribution', 'desc')
+                                 ->paginate($perPage);
+
+            return $this->responseSuccessPaginate($recompenses, "Liste des récompenses");
+
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des récompenses : " . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Liste paginée des récompenses avec recherche avancée
+     */
+    public function indexUtilisateur(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 15);
+            $search  = $request->input('search');
+             $user = JWTAuth::parseToken()->authenticate();
+
+            $query = Recompense::with(['souscription.utilisateur', 'typeRecompense'])
+            ->whereHas('souscription', function ($q) use ($user) {
+                $q->where('id_utilisateur', $user->id_utilisateur);
+            });
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
