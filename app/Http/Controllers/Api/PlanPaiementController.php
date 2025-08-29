@@ -70,7 +70,7 @@ class PlanPaiementController extends Controller
     /**
      * Récupère tous les paiements avec pagination et recherche avancée.
      */
-    public function indexUilisateur(Request $request)
+    public function indexUtilisateur(Request $request)
     {
         try {
             $perPage = $request->input('per_page', 15);
