@@ -8,6 +8,7 @@ use App\Models\Utilisateur;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Exception;
 
 class UtilisateurController extends Controller
@@ -76,29 +77,33 @@ class UtilisateurController extends Controller
     {
         DB::beginTransaction();
         try {
-            $request->validate([
-                'nom'        => 'required|string|max:100',
-                'prenom'     => 'required|string|max:100',
-                'email'      => 'required|email|unique:Utilisateur,email',
-                'telephone'  => 'nullable|string|max:20',
-                'mot_de_passe' => 'required|string|min:6',
-                'type'       => 'required|in:user,admin',
-            ]);
+             $validator = Validator::make($request->all(), [
+            'nom'        => 'required|string|max:100',
+            'prenom'     => 'required|string|max:100',
+            'email'      => 'nullable|string|email|max:150|unique:Utilisateur,email',
+            'telephone'  => 'required|string|max:20|unique:Utilisateur,telephone',
+            'mot_de_passe' => 'required|string|min:6',
+            'poste'      => 'nullable|string|max:100',
+            'service'    => 'nullable|string|max:100',
+            'type'    => 'nullable|string|max:40',
+        ]);
 
-            $utilisateur = Utilisateur::create([
-                'nom'        => $request->nom,
-                'prenom'     => $request->prenom,
-                'email'      => $request->email,
-                'telephone'  => $request->telephone,
-                'mot_de_passe' => Hash::make($request->mot_de_passe),
-                'type'       => $request->type,
-                'date_inscription' => now(),
-                'statut_utilisateur' => Utilisateur::STATUT_ACTIF,
-            ]);
+             $utilisateur = Utilisateur::create([
+            'nom'                => $request->nom,
+            'prenom'             => $request->prenom,
+            'email'              => $request->email,
+            'type'              => $request->type,
+            'telephone'          => $request->telephone,
+            'poste'              => $request->poste,
+            'service'            => $request->service,
+            'mot_de_passe'       => bcrypt($request->mot_de_passe),
+            'date_inscription'   => now(),
+            'statut_utilisateur' => Utilisateur::STATUT_ACTIF,
+        ]);
 
             DB::commit();
 
-            return $this->responseSuccess($utilisateur, "Utilisateur créé avec succès", 201);
+            return $this->responseSuccessMessage( "Utilisateur créé avec succès", 201);
 
         } catch (Exception $e) {
             DB::rollBack();

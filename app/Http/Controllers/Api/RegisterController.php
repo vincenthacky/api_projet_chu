@@ -40,7 +40,7 @@ class RegisterController extends Controller
             'nom'                => $request->nom,
             'prenom'             => $request->prenom,
             'email'              => $request->email,
-             'type'              => $request->type,
+            'type'              => $request->type,
             'telephone'          => $request->telephone,
             'poste'              => $request->poste,
             'service'            => $request->service,
