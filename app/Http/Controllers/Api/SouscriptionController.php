@@ -18,37 +18,64 @@ class SouscriptionController extends Controller
     public function index(Request $request)
     {
         try {
-            $perPage = $request->input('per_page', 15);
+            $perPage = $request->input('per_page', 5);
             $search  = $request->input('search');
+           
 
-            $query = Souscription::with(['utilisateur', 'terrain', 'admin']);
+            $query = Souscription::with(['terrain', 'admin']);
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('id_souscription', 'like', "%{$search}%")
-                      ->orWhere('groupe_souscription', 'like', "%{$search}%")
-                      ->orWhereHas('utilisateur', function ($q2) use ($search) {
-                          $q2->where('nom', 'like', "%{$search}%")
-                             ->orWhere('prenom', 'like', "%{$search}%")
-                             ->orWhere('matricule', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('terrain', function ($q3) use ($search) {
-                          $q3->where('libelle', 'like', "%{$search}%")
-                             ->orWhere('localisation', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('admin', function ($q4) use ($search) {
-                          $q4->where('nom', 'like', "%{$search}%")
-                             ->orWhere('prenom', 'like', "%{$search}%");
-                      });
+                    ->orWhere('groupe_souscription', 'like', "%{$search}%")
+                    ->orWhereHas('terrain', function ($q3) use ($search) {
+                        $q3->where('libelle', 'like', "%{$search}%")
+                            ->orWhere('localisation', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('admin', function ($q4) use ($search) {
+                        $q4->where('nom', 'like', "%{$search}%")
+                            ->orWhere('prenom', 'like', "%{$search}%");
+                    });
                 });
             }
 
-            $souscriptions = $query->orderBy('date_souscription', 'desc')
-                                   ->paginate($perPage);
+            $souscriptions = $query->orderBy('created_at', 'asc')
+                                ->paginate($perPage);
+
+            // 🔥 Enrichir chaque souscription
+            $souscriptions->getCollection()->transform(function ($souscription) {
+
+                // Prix total du terrain
+                $prixTotal = $souscription->terrain->prix_unitaire * $souscription->nombre_mensualites;
+
+                // Montant payé = somme des paiements effectués dans PlanPaiement
+                $montantPaye = $souscription->planpaiements()
+                                    ->whereNotNull('date_paiement_effectif')
+                                    ->sum('montant_paye');
+
+                // Reste à payer
+                $reste = $prixTotal - $montantPaye;
+
+                // Prochain paiement prévu
+                $prochainPaiement = $souscription->planpaiements()
+                                        ->whereNull('date_paiement_effectif')
+                                        ->orderBy('date_limite_versement', 'asc')
+                                        ->first();
+
+                $dateProchain = $prochainPaiement ? $prochainPaiement->date_limite_versement : null;
+
+                // Injecter dans l’objet retourné
+                $souscription->prix_total_terrain = $prixTotal;
+                $souscription->montant_paye = $montantPaye;
+                $souscription->reste_a_payer = max($reste, 0);
+                $souscription->date_prochain = $dateProchain;
+
+                return $souscription;
+            });
 
             return $this->responseSuccessPaginate($souscriptions, "Liste des souscriptions");
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
         }
     }
