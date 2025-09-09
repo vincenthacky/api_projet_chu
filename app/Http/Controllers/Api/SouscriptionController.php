@@ -8,6 +8,7 @@ use App\Models\Souscription;
 use App\Models\Utilisateur;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use Exception;
 
 class SouscriptionController extends Controller
@@ -62,7 +63,12 @@ class SouscriptionController extends Controller
                                         ->orderBy('date_limite_versement', 'asc')
                                         ->first();
 
-                $dateProchain = $prochainPaiement ? $prochainPaiement->date_limite_versement : null;
+                // Si aucun paiement trouvé, prendre date_souscription + 1 mois
+                if ($prochainPaiement) {
+                    $dateProchain = $prochainPaiement->date_limite_versement;
+                } else {
+                    $dateProchain = Carbon::parse($souscription->date_souscription)->addMonth()->format('Y-m-d');
+                }
 
                 // Injecter dans l’objet retourné
                 $souscription->prix_total_terrain = $prixTotal;
@@ -133,7 +139,12 @@ class SouscriptionController extends Controller
                                         ->orderBy('date_limite_versement', 'asc')
                                         ->first();
 
-                $dateProchain = $prochainPaiement ? $prochainPaiement->date_limite_versement : null;
+                 // Si aucun paiement trouvé, prendre date_souscription + 1 mois
+                if ($prochainPaiement) {
+                    $dateProchain = $prochainPaiement->date_limite_versement;
+                } else {
+                    $dateProchain = Carbon::parse($souscription->date_souscription)->addMonth()->format('Y-m-d');
+                }
 
                 // Injecter dans l’objet retourné
                 $souscription->prix_total_terrain = $prixTotal;
@@ -156,6 +167,9 @@ class SouscriptionController extends Controller
     /**
      * Récupérer toutes les demandes de souscription utilisateur en attente.
      */
+  /**
+     * Récupérer toutes les demandes de souscription utilisateur en attente.
+     */
     public function indexDemandes(Request $request)
     {
         try {
@@ -170,17 +184,53 @@ class SouscriptionController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->whereHas('utilisateur', function ($q2) use ($search) {
                         $q2->where('nom', 'like', "%{$search}%")
-                           ->orWhere('prenom', 'like', "%{$search}%");
+                        ->orWhere('prenom', 'like', "%{$search}%");
                     })
                     ->orWhereHas('terrain', function ($q3) use ($search) {
                         $q3->where('libelle', 'like', "%{$search}%")
-                           ->orWhere('localisation', 'like', "%{$search}%");
+                        ->orWhere('localisation', 'like', "%{$search}%");
                     });
                 });
             }
 
             $demandes = $query->orderBy('created_at', 'desc')
-                              ->paginate($perPage);
+                            ->paginate($perPage);
+
+            // 🔥 Enrichir chaque demande
+            $demandes->getCollection()->transform(function ($souscription) {
+
+                // Prix total du terrain
+                $prixTotal = $souscription->terrain->prix_unitaire * $souscription->nombre_mensualites;
+
+                // Montant payé = somme des paiements effectués dans PlanPaiement
+                $montantPaye = $souscription->planpaiements()
+                                    ->whereNotNull('date_paiement_effectif')
+                                    ->sum('montant_paye');
+
+                // Reste à payer
+                $reste = $prixTotal - $montantPaye;
+
+                // Prochain paiement prévu
+                $prochainPaiement = $souscription->planpaiements()
+                                        ->whereNull('date_paiement_effectif')
+                                        ->orderBy('date_limite_versement', 'asc')
+                                        ->first();
+
+                // Si aucun paiement trouvé, prendre date_souscription + 1 mois
+                if ($prochainPaiement) {
+                    $dateProchain = $prochainPaiement->date_limite_versement;
+                } else {
+                    $dateProchain = Carbon::parse($souscription->date_souscription)->addMonth()->format('Y-m-d');
+                }
+
+                // Injecter dans l’objet retourné
+                $souscription->prix_total_terrain = $prixTotal;
+                $souscription->montant_paye = $montantPaye;
+                $souscription->reste_a_payer = max($reste, 0);
+                $souscription->date_prochain = $dateProchain;
+
+                return $souscription;
+            });
 
             return $this->responseSuccessPaginate($demandes, "Liste des demandes de souscription");
 
@@ -189,7 +239,7 @@ class SouscriptionController extends Controller
         }
     }
 
-        /**
+    /**
      * Récupérer toutes les demandes de souscription de l'utilisateur connecté en attente.
      */
     public function indexDemandesUtilisateur(Request $request)
@@ -198,7 +248,6 @@ class SouscriptionController extends Controller
             $perPage = $request->input('per_page', 10);
             $search  = $request->input('search');
 
-            // Utilisateur connecté
             $user = JWTAuth::parseToken()->authenticate();
 
             $query = Souscription::with(['terrain'])
@@ -217,6 +266,42 @@ class SouscriptionController extends Controller
 
             $demandes = $query->orderBy('created_at', 'desc')
                             ->paginate($perPage);
+
+            // 🔥 Enrichir chaque demande
+            $demandes->getCollection()->transform(function ($souscription) {
+
+                // Prix total du terrain
+                $prixTotal = $souscription->terrain->prix_unitaire * $souscription->nombre_mensualites;
+
+                // Montant payé = somme des paiements effectués dans PlanPaiement
+                $montantPaye = $souscription->planpaiements()
+                                    ->whereNotNull('date_paiement_effectif')
+                                    ->sum('montant_paye');
+
+                // Reste à payer
+                $reste = $prixTotal - $montantPaye;
+
+                // Prochain paiement prévu
+                $prochainPaiement = $souscription->planpaiements()
+                                        ->whereNull('date_paiement_effectif')
+                                        ->orderBy('date_limite_versement', 'asc')
+                                        ->first();
+
+                // Si aucun paiement trouvé, prendre date_souscription + 1 mois
+                if ($prochainPaiement) {
+                    $dateProchain = $prochainPaiement->date_limite_versement;
+                } else {
+                    $dateProchain = Carbon::parse($souscription->date_souscription)->addMonth()->format('Y-m-d');
+                }
+
+                // Injecter dans l’objet retourné
+                $souscription->prix_total_terrain = $prixTotal;
+                $souscription->montant_paye = $montantPaye;
+                $souscription->reste_a_payer = max($reste, 0);
+                $souscription->date_prochain = $dateProchain;
+
+                return $souscription;
+            });
 
             return $this->responseSuccessPaginate($demandes, "Liste des demandes de souscription de l'utilisateur");
 
