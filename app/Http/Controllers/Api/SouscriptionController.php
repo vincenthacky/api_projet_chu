@@ -353,7 +353,7 @@ class SouscriptionController extends Controller
         DB::beginTransaction();
         try {
             $request->validate([
-                'statut' => 'required|in:active,rejete',
+                'statut_souscription' => 'required|in:active,rejete',
             ]);
 
             $demande = Souscription::where('origine', 'utilisateur')
