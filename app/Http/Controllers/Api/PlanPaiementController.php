@@ -21,7 +21,7 @@ class PlanPaiementController extends Controller
             $perPage = $request->input('per_page', 15);
             $search  = $request->input('search');
 
-            $query = PlanPaiement::with(['souscription']);
+            $query = PlanPaiement::with(['souscription.utilisateur']);
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
