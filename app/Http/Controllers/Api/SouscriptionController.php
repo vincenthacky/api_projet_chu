@@ -23,7 +23,7 @@ class SouscriptionController extends Controller
             $search  = $request->input('search');
            
 
-            $query = Souscription::with(['terrain', 'admin']);
+            $query = Souscription::with(['terrain', 'admin','utilisateur']);
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
@@ -176,7 +176,7 @@ class SouscriptionController extends Controller
             $perPage = $request->input('per_page', 10);
             $search  = $request->input('search');
 
-            $query = Souscription::with(['utilisateur', 'terrain'])
+            $query = Souscription::with(['utilisateur', 'terrain','admin'])
                 ->where('origine', Souscription::ORIGINE_UTILISATEUR)
                 ->where('statut_souscription', Souscription::STATUT_EN_ATTENTE);
 
@@ -250,7 +250,7 @@ class SouscriptionController extends Controller
 
             $user = JWTAuth::parseToken()->authenticate();
 
-            $query = Souscription::with(['terrain'])
+            $query = Souscription::with(['utilisateur', 'terrain','admin'])
                 ->where('origine', Souscription::ORIGINE_UTILISATEUR)
                 ->where('statut_souscription', Souscription::STATUT_EN_ATTENTE)
                 ->where('id_utilisateur', $user->id_utilisateur);
