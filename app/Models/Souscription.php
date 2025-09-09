@@ -80,6 +80,15 @@ class Souscription extends Model
     public const STATUT_SUSPENDUE = 'suspendue';
     public const STATUT_TERMINEE  = 'terminee';
     public const STATUT_RESILLEE  = 'resillee';
+    public const STATUT_EN_ATTENTE = 'en_attente';
+    public const STATUT_REJETE     = 'rejete';
+
+      // Constantes pour l’origine
+    public const ORIGINE_ADMIN       = 'admin';
+    public const ORIGINE_UTILISATEUR = 'utilisateur';
+
+    // Constantes pour le statut
+
 
     /**
      * Relations

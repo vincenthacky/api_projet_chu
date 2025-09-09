@@ -126,6 +126,142 @@ class SouscriptionController extends Controller
 
 
 
+    /**
+     * Récupérer toutes les demandes de souscription utilisateur en attente.
+     */
+    public function indexDemandes(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 10);
+            $search  = $request->input('search');
+
+            $query = Souscription::with(['utilisateur', 'terrain'])
+                ->where('origine', Souscription::ORIGINE_UTILISATEUR)
+                ->where('statut_souscription', Souscription::STATUT_EN_ATTENTE);
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('utilisateur', function ($q2) use ($search) {
+                        $q2->where('nom', 'like', "%{$search}%")
+                           ->orWhere('prenom', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('terrain', function ($q3) use ($search) {
+                        $q3->where('libelle', 'like', "%{$search}%")
+                           ->orWhere('localisation', 'like', "%{$search}%");
+                    });
+                });
+            }
+
+            $demandes = $query->orderBy('created_at', 'desc')
+                              ->paginate($perPage);
+
+            return $this->responseSuccessPaginate($demandes, "Liste des demandes de souscription");
+
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des demandes : " . $e->getMessage(), 500);
+        }
+    }
+
+        /**
+     * Récupérer toutes les demandes de souscription de l'utilisateur connecté en attente.
+     */
+    public function indexDemandesUtilisateur(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 10);
+            $search  = $request->input('search');
+
+            // Utilisateur connecté
+            $user = JWTAuth::parseToken()->authenticate();
+
+            $query = Souscription::with(['terrain'])
+                ->where('origine', Souscription::ORIGINE_UTILISATEUR)
+                ->where('statut_souscription', Souscription::STATUT_EN_ATTENTE)
+                ->where('id_utilisateur', $user->id_utilisateur);
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('terrain', function ($q2) use ($search) {
+                        $q2->where('libelle', 'like', "%{$search}%")
+                        ->orWhere('localisation', 'like', "%{$search}%");
+                    });
+                });
+            }
+
+            $demandes = $query->orderBy('created_at', 'desc')
+                            ->paginate($perPage);
+
+            return $this->responseSuccessPaginate($demandes, "Liste des demandes de souscription de l'utilisateur");
+
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des demandes : " . $e->getMessage(), 500);
+        }
+    }
+
+
+    /**
+     * Créer une demande de souscription utilisateur.
+     */
+    public function storeDemande(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $user = JWTAuth::parseToken()->authenticate(); // utilisateur connecté
+            $request->validate([
+                'id_terrain'      => 'required|exists:Terrain,id_terrain',
+                'nombre_terrains' => 'sometimes|integer|min:1',
+                'montant_mensuel' => 'sometimes|numeric|min:0',
+                'nombre_mensualites' => 'sometimes|integer|min:1',
+            ]);
+
+            $demande = Souscription::create([
+                'id_utilisateur' => $user->id_utilisateur,
+                'id_terrain'     => $request->id_terrain,
+                'nombre_terrains' => $request->nombre_terrains ?? 1,
+                'montant_mensuel' => $request->montant_mensuel ?? 0,
+                'nombre_mensualites' => $request->nombre_mensualites ?? 1,
+                'origine'        => Souscription::ORIGINE_UTILISATEUR,
+                'statut_souscription' => Souscription::STATUT_EN_ATTENTE,
+            ]);
+
+            DB::commit();
+            return $this->responseSuccessMessage("Demande de souscription créée avec succès", 201);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->responseError("Erreur lors de la création de la demande : " . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Changer le statut d'une demande de souscription (valider ou rejeter)
+     */
+    public function changerStatutDemande(Request $request, $id)
+    {
+        DB::beginTransaction();
+        try {
+            $request->validate([
+                'statut' => 'required|in:validee,rejete',
+            ]);
+
+            $demande = Souscription::where('origine', 'utilisateur')
+                                   ->where('id_souscription', $id)
+                                   ->firstOrFail();
+
+            $demande->statut_souscription = $request->statut;
+            $demande->save();
+
+            DB::commit();
+            return $this->responseSuccessMessage("Statut de la demande mis à jour avec succès");
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->responseError("Erreur lors de la mise à jour du statut : " . $e->getMessage(), 500);
+        }
+    }
+
+
+
 
 
 

@@ -32,12 +32,20 @@ Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']
 Route::post('/password/update', [AuthController::class, 'updatePassword']);
 
 Route::middleware('type:superAdmin,admin,user')->group(function () {
+
+    Route::get('souscriptions/demandes', [SouscriptionController::class, 'indexDemandes']); 
+    Route::get('souscriptions/demandes/utilisateur', [SouscriptionController::class, 'indexDemandesUtilisateur']); 
+    Route::post('souscriptions/demandes', [SouscriptionController::class, 'storeDemande']); 
+    Route::patch('souscriptions/demandes/{id}/changer-statut', [SouscriptionController::class, 'changerStatutDemande']); 
+
+
     Route::get('souscriptions/utilisateur', [SouscriptionController::class, 'indexUtilisateur']);
     Route::get('reclamations/utilisateur', [ReclamationController::class, 'indexUtilisateur']);
     Route::get('recompenses/utilisateur', [RecompenseController::class, 'indexUtilisateur']);
     Route::get('paiements/utilisateur', [PlanPaiementController::class, 'indexUtilisateur']);
     Route::get('documents/utilisateur', [DocumentController::class, 'indexUtilisateur']);
     Route::get('terrains/utilisateur', [TerrainController::class, 'indexUtilisateur']);
+
 
     Route::apiResource('souscriptions', SouscriptionController::class);
     Route::apiResource('utilisateurs', UtilisateurController::class);
