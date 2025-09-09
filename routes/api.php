@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\RecompenseController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\TerrainController;
 use App\Http\Controllers\Api\UtilisateurController;
 
 /*
@@ -44,6 +45,7 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::apiResource('recompenses', RecompenseController::class);
     Route::apiResource('reclamations', ReclamationController::class);
     Route::apiResource('documents', DocumentController::class);
+    Route::apiResource('terrains', TerrainController::class);
     Route::apiResource('statutreclamation', StatutReclamationController::class);
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
