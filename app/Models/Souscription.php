@@ -49,6 +49,7 @@ class Souscription extends Model
         'statut_souscription',
         'groupe_souscription',
         'notes_admin',
+        'origine',
     ];
 
     /**
