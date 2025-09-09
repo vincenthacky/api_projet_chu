@@ -37,6 +37,7 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::get('recompenses/utilisateur', [RecompenseController::class, 'indexUtilisateur']);
     Route::get('paiements/utilisateur', [PlanPaiementController::class, 'indexUtilisateur']);
     Route::get('documents/utilisateur', [DocumentController::class, 'indexUtilisateur']);
+    Route::get('terrains/utilisateur', [TerrainController::class, 'indexUtilisateur']);
 
     Route::apiResource('souscriptions', SouscriptionController::class);
     Route::apiResource('utilisateurs', UtilisateurController::class);
