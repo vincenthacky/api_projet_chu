@@ -21,7 +21,7 @@ class ReclamationController extends Controller
             $perPage = $request->input('per_page', 15);
             $search  = $request->input('search');
 
-            $query = Reclamation::with(['souscription', 'statut']);
+            $query = Reclamation::with(['souscription.utilisateur', 'statut']);
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
