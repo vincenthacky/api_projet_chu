@@ -87,6 +87,7 @@ class Souscription extends Model
       // Constantes pour l’origine
     public const ORIGINE_ADMIN       = 'admin';
     public const ORIGINE_UTILISATEUR = 'utilisateur';
+    public const ORIGINE_SUPER_ADMIN       = 'superAdmin';
 
     // Constantes pour le statut
 

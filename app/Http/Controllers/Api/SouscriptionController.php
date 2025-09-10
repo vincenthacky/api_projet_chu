@@ -23,7 +23,7 @@ class SouscriptionController extends Controller
             $search  = $request->input('search');
            
 
-            $query = Souscription::with(['terrain', 'admin','utilisateur']);
+            $query = Souscription::with(['terrain', 'admin','utilisateur'])->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
@@ -99,7 +99,7 @@ class SouscriptionController extends Controller
             $user = JWTAuth::parseToken()->authenticate();
 
             $query = Souscription::with(['terrain', 'admin', 'planpaiements'])
-                ->where('id_utilisateur', $user->id_utilisateur);
+                ->where('id_utilisateur', $user->id_utilisateur)->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
@@ -329,9 +329,6 @@ class SouscriptionController extends Controller
             $demande = Souscription::create([
                 'id_utilisateur' => $user->id_utilisateur,
                 'id_terrain'     => $request->id_terrain,
-                'nombre_terrains' => $request->nombre_terrains ?? 1,
-                'montant_mensuel' => $request->montant_mensuel ?? 0,
-                'nombre_mensualites' => $request->nombre_mensualites ?? 1,
                 'origine'        => Souscription::ORIGINE_UTILISATEUR,
                 'statut_souscription' => Souscription::STATUT_EN_ATTENTE,
             ]);
@@ -350,27 +347,45 @@ class SouscriptionController extends Controller
      */
     public function changerStatutDemande(Request $request, $id)
     {
-        DB::beginTransaction();
+        $request->validate([
+            'statut_souscription' => 'required|in:' . implode(',', [
+                Souscription::STATUT_ACTIVE,
+                Souscription::STATUT_REJETE
+            ]),
+        ]);
+
         try {
-            $request->validate([
-                'statut_souscription' => 'required|in:active,rejete',
+            $user = JWTAuth::parseToken()->authenticate();
+
+            // Vérification du rôle de l’utilisateur (à adapter selon ton modèle Utilisateur)
+            if (!in_array($user->type, [Souscription::ORIGINE_ADMIN, Souscription::ORIGINE_SUPER_ADMIN])) {
+                return $this->responseError(
+                    "Accès refusé. Seuls les administrateurs peuvent changer le statut des demandes.", 
+                    403
+                );
+            }
+
+            $demande = Souscription::where('origine', Souscription::ORIGINE_UTILISATEUR)
+                ->where('id_souscription', $id)
+                ->firstOrFail();
+
+            // Vérifier si le statut est déjà le même
+            if ($demande->statut_souscription === $request->statut_souscription) {
+                return $this->responseSuccessMessage("Le statut est déjà défini sur {$request->statut_souscription}");
+            }
+
+            $demande->update([
+                'statut_souscription' => $request->statut_souscription,
+                'id_admin'            => $user->id_utilisateur,
             ]);
 
-            $demande = Souscription::where('origine', 'utilisateur')
-                                   ->where('id_souscription', $id)
-                                   ->firstOrFail();
-
-            $demande->statut_souscription = $request->statut;
-            $demande->save();
-
-            DB::commit();
             return $this->responseSuccessMessage("Statut de la demande mis à jour avec succès");
 
         } catch (Exception $e) {
-            DB::rollBack();
             return $this->responseError("Erreur lors de la mise à jour du statut : " . $e->getMessage(), 500);
         }
     }
+
 
 
 
