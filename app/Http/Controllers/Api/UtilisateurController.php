@@ -45,7 +45,8 @@ class UtilisateurController extends Controller
     }
 
     /**
-     * Récupérer tous les utilisateurs avec leurs souscriptions et plans de paiement
+     * Récupérer uniquement les utilisateurs ayant au moins une souscription,
+     * avec leurs souscriptions et plans de paiement
      */
     public function indexWithSouscriptions(Request $request)
     {
@@ -53,8 +54,9 @@ class UtilisateurController extends Controller
             $perPage = $request->input('per_page', 15);
             $search  = $request->input('search');
 
-            // Charger les relations souscriptions + planpaiements
-            $query = Utilisateur::with(['souscriptions.planpaiements']);
+            // Charger uniquement les utilisateurs qui ont au moins une souscription
+            $query = Utilisateur::with(['souscriptions.planpaiements'])
+                ->whereHas('souscriptions');
 
             // Recherche
             if ($search) {
@@ -71,12 +73,13 @@ class UtilisateurController extends Controller
             $utilisateurs = $query->orderBy('date_inscription', 'desc')
                                 ->paginate($perPage);
 
-            return $this->responseSuccessPaginate($utilisateurs, "Liste des utilisateurs avec souscriptions et plans de paiement");
+            return $this->responseSuccessPaginate($utilisateurs, "Liste des utilisateurs ayant des souscriptions avec plans de paiement");
 
         } catch (Exception $e) {
             return $this->responseError("Erreur lors de la récupération des utilisateurs : " . $e->getMessage(), 500);
         }
     }
+
 
 
     /**
