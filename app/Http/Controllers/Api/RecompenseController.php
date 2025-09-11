@@ -159,6 +159,7 @@ class RecompenseController extends Controller
             return $this->responseError("Erreur lors de la création de la récompense : " . $e->getMessage(), 500);
         }
     }
+    
 
     /**
      * Mettre à jour une récompense
@@ -192,6 +193,37 @@ class RecompenseController extends Controller
             return $this->responseError("Erreur lors de la mise à jour de la récompense : " . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Modifier uniquement le statut d'une récompense
+     */
+    public function updateStatut(Request $request, $id)
+    {
+        DB::beginTransaction();
+        try {
+            // Validation des données
+            $request->validate([
+                'statut_recompense' => 'required|in:due,attribuee,annulee',
+            ]);
+
+            // Récupération de la récompense
+            $recompense = Recompense::findOrFail($id);
+
+            // Mise à jour du statut
+            $recompense->update([
+                'statut_recompense' => $request->statut_recompense,
+            ]);
+
+            DB::commit();
+
+            return $this->responseSuccessMessage("Statut de la récompense mis à jour avec succès");
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->responseError("Erreur lors de la mise à jour du statut : " . $e->getMessage(), 500);
+        }
+    }
+
 
     /**
      * Supprimer une récompense
