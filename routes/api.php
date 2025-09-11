@@ -38,6 +38,7 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::post('souscriptions/demandes', [SouscriptionController::class, 'storeDemande']); 
     Route::patch('souscriptions/demandes/{id}/changer-statut', [SouscriptionController::class, 'changerStatutDemande']); 
     Route::patch('/recompenses/{id}/statut', [RecompenseController::class, 'updateStatut']);
+    Route::get('/utilisateurs-souscriptions', [UtilisateurController::class, 'indexWithSouscriptions']);
 
     Route::get('souscriptions/utilisateur', [SouscriptionController::class, 'indexUtilisateur']);
     Route::get('reclamations/utilisateur', [ReclamationController::class, 'indexUtilisateur']);

@@ -45,6 +45,41 @@ class UtilisateurController extends Controller
     }
 
     /**
+     * Récupérer tous les utilisateurs avec leurs souscriptions et plans de paiement
+     */
+    public function indexWithSouscriptions(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 15);
+            $search  = $request->input('search');
+
+            // Charger les relations souscriptions + planpaiements
+            $query = Utilisateur::with(['souscriptions.planpaiements']);
+
+            // Recherche
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nom', 'like', "%{$search}%")
+                    ->orWhere('prenom', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('telephone', 'like', "%{$search}%")
+                    ->orWhere('matricule', 'like', "%{$search}%");
+                });
+            }
+
+            // Pagination
+            $utilisateurs = $query->orderBy('date_inscription', 'desc')
+                                ->paginate($perPage);
+
+            return $this->responseSuccessPaginate($utilisateurs, "Liste des utilisateurs avec souscriptions et plans de paiement");
+
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des utilisateurs : " . $e->getMessage(), 500);
+        }
+    }
+
+
+    /**
      * Récupérer les infos de l'utilisateur connecté (via JWT).
      */
     public function me()
