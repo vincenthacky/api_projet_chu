@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\PlanPaiementController;
 use App\Http\Controllers\Api\ReclamationController;
+use App\Http\Controllers\Api\TypeRecompenseController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SouscriptionController;
 use App\Http\Controllers\Api\StatutReclamationController;
@@ -53,6 +54,8 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::apiResource('paiements', PlanPaiementController::class);
     Route::apiResource('evenements', EvenementController::class);
     Route::apiResource('recompenses', RecompenseController::class);
+    Route::apiResource('type-recompenses', TypeRecompenseController::class);
+    
     Route::apiResource('reclamations', ReclamationController::class);
     Route::apiResource('documents', DocumentController::class);
     Route::apiResource('terrains', TerrainController::class);
