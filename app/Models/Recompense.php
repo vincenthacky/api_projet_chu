@@ -21,7 +21,7 @@ class Recompense extends Model
         'description',
         'motif_recompense',
         'periode_merite',
-        'valeur_recompense',
+        //'valeur_recompense',
         'statut_recompense',
         'date_attribution',
         'date_attribution_effective',
@@ -29,7 +29,7 @@ class Recompense extends Model
     ];
 
     protected $casts = [
-        'valeur_recompense'         => 'decimal:2',
+       
         'date_attribution'          => 'datetime',
         'date_attribution_effective'=> 'datetime',
     ];

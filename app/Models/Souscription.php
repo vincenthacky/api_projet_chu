@@ -67,7 +67,7 @@ class Souscription extends Model
      */
     protected $attributes = [
         'nombre_terrains'     => 1,
-        'montant_mensuel'     => 64400.00,
+        //'montant_mensuel'     => 64400.00,
         'nombre_mensualites'  => 64,
         'statut_souscription' => self::STATUT_ACTIVE,
         'date_debut_paiement' => '2024-05-01',

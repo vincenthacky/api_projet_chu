@@ -129,7 +129,7 @@ class RecompenseController extends Controller
                 'description',
                 'motif_recompense',
                 'periode_merite',
-                'valeur_recompense',
+                //'valeur_recompense',
                 'statut_recompense',
                 'date_attribution',
                 'date_attribution_effective',

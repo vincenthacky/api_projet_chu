@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Souscription;
+use App\Models\Terrain;
 use App\Models\Utilisateur;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
@@ -326,8 +327,15 @@ class SouscriptionController extends Controller
                 'nombre_mensualites' => 'sometimes|integer|min:1',
             ]);
 
+            $terrain = Terrain::find($request->id_terrain);
+            if (!$terrain ) {
+            return $this->responseError("Le terrain non trouver  pour créer une souscription.", 403);   
+            }
+
+
             $demande = Souscription::create([
                 'id_utilisateur' => $user->id_utilisateur,
+                'montant_mensuel'     => $terrain->montant_mensuel,
                 'id_terrain'     => $request->id_terrain,
                 'origine'        => Souscription::ORIGINE_UTILISATEUR,
                 'statut_souscription' => Souscription::STATUT_EN_ATTENTE,
@@ -456,9 +464,15 @@ class SouscriptionController extends Controller
                 return $this->responseError("L'utilisateur doit être de type 'user' pour créer une souscription.", 403);
             }
 
+             $terrain = Terrain::find($request->id_terrain);
+             if (!$terrain ) {
+                return $this->responseError("Le terrain non trouver  pour créer une souscription.", 403);   
+                }
+
             // Création de la souscription (on ajoute l'admin connecté automatiquement)
             $souscription = Souscription::create([
                 'id_utilisateur' => $request->id_utilisateur,
+                'montant_mensuel'     => $terrain->montant_mensuel,
                 'id_terrain'     => $request->id_terrain,
                 'id_admin'       => $user->id_utilisateur,
             ]);
