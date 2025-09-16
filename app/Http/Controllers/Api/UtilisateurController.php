@@ -127,10 +127,10 @@ class UtilisateurController extends Controller
             'type'         => 'nullable|string|max:40',
 
             // 📂 Validation des fichiers
-            'cni'                  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'carte_professionnel'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'cni'                  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'carte_professionnel'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
             'fiche_souscription'   => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10240',
-            'photo_profil'         => 'nullable|image|mimes:jpg,jpeg,png|max:5120', // 5Mo image
+            'photo_profil'         => 'nullable|image|mimes:jpg,jpeg,png|max:10240', // 5Mo image
         ]);
 
         if ($validator->fails()) {
