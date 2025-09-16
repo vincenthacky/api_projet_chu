@@ -272,7 +272,7 @@ class SouscriptionController extends Controller
             $demandes->getCollection()->transform(function ($souscription) {
 
                 // Prix total du terrain
-                $prixTotal = $souscription->terrain->prix_unitaire * $souscription->nombre_mensualites;
+                $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
 
                 // Montant payé = somme des paiements effectués dans PlanPaiement
                 $montantPaye = $souscription->planpaiements()
