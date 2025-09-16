@@ -72,7 +72,7 @@ class PlanPaiement extends Model
     public const MODE_ESPECES       = 'especes';
     public const MODE_VIREMENT      = 'virement';
     public const MODE_MOBILE_MONEY  = 'mobile_money';
-    public const MODE_CHEQUE        = 'cheques';
+    public const MODE_CHEQUE        = 'cheque';
 
     /**
      * Constantes pour le statut de versement
