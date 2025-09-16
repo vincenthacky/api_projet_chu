@@ -78,7 +78,7 @@ class Evenement extends Model
     public function documents()
     {
         return $this->hasMany(Document::class, 'id_source', 'id_evenement')
-                    ->where('source_table', 'Evenement');
+                    ->where('source_table', 'evenements');
     }
 
     /**
