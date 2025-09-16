@@ -101,9 +101,9 @@ class TerrainController extends Controller
                 'localisation'   => 'required|string|max:255',
                 'superficie'     => 'required|numeric|min:0',
                 'prix_unitaire'  => 'required|numeric|min:0',
+                'montant_mensuel'  => 'required|numeric|min:0',
                 'description'    => 'nullable|string',
                 'statut_terrain' => 'nullable|in:disponible,reserve,vendu,indisponible',
-                'coordonnees_gps'=> 'nullable|string|max:255',
                 'date_creation'  => 'nullable|date',
             ]);
 
@@ -113,8 +113,8 @@ class TerrainController extends Controller
                 'superficie',
                 'prix_unitaire',
                 'description',
+                'montant_mensuel',
                 'statut_terrain',
-                'coordonnees_gps',
                 'date_creation',
             ]));
 

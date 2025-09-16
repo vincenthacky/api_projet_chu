@@ -46,6 +46,7 @@ class Terrain extends Model
         'description',
         'statut_terrain',
         'date_creation',
+        'montant_mensuel',
     ];
 
     /**
