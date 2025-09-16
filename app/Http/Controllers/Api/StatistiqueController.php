@@ -26,7 +26,7 @@ class StatistiqueController extends Controller
             $souscriptionsActives = Souscription::where('statut_souscription', Souscription::STATUT_ACTIVE)->count();
             
             $totalPaiements = PlanPaiement::count();
-            $paiementsEnRetard = PlanPaiement::where('statut_versement', PlanPaiement::STATUT_NON_PAYE)
+            $paiementsEnRetard = PlanPaiement::where('statut_versement', PlanPaiement::STATUT_PAYE_EN_RETARD)
                 ->where('date_limite_versement', '<', Carbon::now())
                 ->count();
             
