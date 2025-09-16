@@ -18,7 +18,7 @@ class DocumentService
      * Enregistre un document et retourne le modèle créé.
      */
     public function store(
-        int $idSouscription,
+        ?int $idSouscription,
         string $libelleTypeDocument,
         array $options = [],
         ?UploadedFile $fichier = null
@@ -36,7 +36,7 @@ class DocumentService
             );
 
             $documentData = [
-                'id_souscription'      => $idSouscription,
+                'id_souscription'      => $idSouscription ?? null,
                 'id_type_document'     => $typeDocument->id_type_document,
                 'source_table'         => $options['source_table'] ?? null,
                 'id_source'            => $options['source_id'] ?? null,

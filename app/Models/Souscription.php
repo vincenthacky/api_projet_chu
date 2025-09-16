@@ -47,7 +47,6 @@ class Souscription extends Model
         'nombre_mensualites',
         'date_debut_paiement',
         'statut_souscription',
-        'groupe_souscription',
         'notes_admin',
         'origine',
     ];

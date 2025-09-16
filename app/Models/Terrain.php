@@ -45,7 +45,6 @@ class Terrain extends Model
         'prix_unitaire',
         'description',
         'statut_terrain',
-        'coordonnees_gps',
         'date_creation',
     ];
 

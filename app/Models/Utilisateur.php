@@ -145,4 +145,38 @@ class Utilisateur extends Authenticatable implements JWTSubject
     {
         return $this->statut_utilisateur === self::STATUT_ACTIF;
     }
+
+
+
+    // 📂 Document spécifique : CNI
+    public function cni()
+    {
+        return $this->hasOne(Document::class, 'id_source', 'id_utilisateur')
+            ->where('source_table', 'utilisateurs')
+            ->whereHas('typeDocument', fn($q) => $q->where('libelle_type_document', 'CNI'));
+    }
+
+    // 📂 Document spécifique : Carte Professionnelle
+    public function carteProfessionnelle()
+    {
+        return $this->hasOne(Document::class, 'id_source', 'id_utilisateur')
+            ->where('source_table', 'utilisateurs')
+            ->whereHas('typeDocument', fn($q) => $q->where('libelle_type_document', 'Carte Professionnelle'));
+    }
+
+    // 📂 Document spécifique : Fiche de Souscription
+    public function ficheSouscription()
+    {
+        return $this->hasOne(Document::class, 'id_source', 'id_utilisateur')
+            ->where('source_table', 'utilisateurs')
+            ->whereHas('typeDocument', fn($q) => $q->where('libelle_type_document', 'Fiche de Souscription'));
+    }
+
+    // 📂 Document spécifique : Photo de Profil
+    public function photoProfil()
+    {
+        return $this->hasOne(Document::class, 'id_source', 'id_utilisateur')
+            ->where('source_table', 'utilisateurs')
+            ->whereHas('typeDocument', fn($q) => $q->where('libelle_type_document', 'Photo de Profil'));
+    }
 }

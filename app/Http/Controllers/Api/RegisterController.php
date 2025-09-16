@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Services\DocumentService;
 use App\Models\Utilisateur;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -13,20 +14,27 @@ class RegisterController extends Controller
 {
     //
 
+
     /**
-     * 📌 Inscription (register)
-     */
-    public function register(Request $request)
+ * 📌 Inscription (register)
+ */
+    public function register(Request $request, DocumentService $documentService)
     {
         $validator = Validator::make($request->all(), [
-            'nom'        => 'required|string|max:100',
-            'prenom'     => 'required|string|max:100',
-            'email'      => 'nullable|string|email|max:150|unique:Utilisateur,email',
-            'telephone'  => 'required|string|max:20|unique:Utilisateur,telephone',
+            'nom'          => 'required|string|max:100',
+            'prenom'       => 'required|string|max:100',
+            'email'        => 'nullable|string|email|max:150|unique:Utilisateur,email',
+            'telephone'    => 'required|string|max:20|unique:Utilisateur,telephone',
             'mot_de_passe' => 'required|string|min:6',
-            'poste'      => 'nullable|string|max:100',
-            'service'    => 'nullable|string|max:100',
-            'type'    => 'nullable|string|max:40',
+            'poste'        => 'nullable|string|max:100',
+            'service'      => 'nullable|string|max:100',
+            'type'         => 'nullable|string|max:40',
+
+            // 📂 Validation des fichiers
+            'cni'                  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'carte_professionnel'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'fiche_souscription'   => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10240',
+            'photo_profil'         => 'nullable|image|mimes:jpg,jpeg,png|max:5120', // 5Mo image
         ]);
 
         if ($validator->fails()) {
@@ -36,11 +44,12 @@ class RegisterController extends Controller
             ], 422);
         }
 
+        // ✅ Création utilisateur
         $user = Utilisateur::create([
             'nom'                => $request->nom,
             'prenom'             => $request->prenom,
             'email'              => $request->email,
-            'type'              => $request->type,
+            'type'               => $request->type,
             'telephone'          => $request->telephone,
             'poste'              => $request->poste,
             'service'            => $request->service,
@@ -48,6 +57,29 @@ class RegisterController extends Controller
             'date_inscription'   => now(),
             'statut_utilisateur' => Utilisateur::STATUT_ACTIF,
         ]);
+
+        // ✅ Upload des documents si présents
+        $documents = [
+            'cni'                 => 'CNI',
+            'carte_professionnel' => 'Carte Professionnelle',
+            'fiche_souscription'  => 'Fiche de Souscription',
+            'photo_profil'        => 'Photo de Profil',
+        ];
+
+        foreach ($documents as $champ => $libelle) {
+            if ($request->hasFile($champ)) {
+                $documentService->store(
+                    idSouscription: null, // tu peux mettre l’id si lié
+                    libelleTypeDocument: $libelle,
+                    options: [
+                        'source_table'         => 'utilisateurs',
+                        'source_id'            => $user->id_utilisateur,
+                        'description_document' => "Document {$libelle} de l'utilisateur {$user->nom} {$user->prenom}",
+                    ],
+                    fichier: $request->file($champ)
+                );
+            }
+        }
 
         $token = JWTAuth::fromUser($user);
 
@@ -58,5 +90,7 @@ class RegisterController extends Controller
             'token' => $token
         ], 201);
     }
+
+    
 
 }
