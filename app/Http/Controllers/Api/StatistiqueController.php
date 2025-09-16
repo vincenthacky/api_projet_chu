@@ -10,6 +10,7 @@ use App\Models\Evenement;
 use App\Models\Reclamation;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Exception;
 
 class StatistiqueController extends Controller
 {
@@ -56,17 +57,10 @@ class StatistiqueController extends Controller
                 'montantRestant' => (float)$montantRestant
             ];
 
-            return response()->json([
-                'success' => true,
-                'data' => $stats
-            ]);
+            return $this->responseSuccess($stats, "Statistiques récupérées avec succès");
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des statistiques',
-                'error' => $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des statistiques : " . $e->getMessage(), 500);
         }
     }
 
@@ -76,9 +70,9 @@ class StatistiqueController extends Controller
      */
     public function getPaiementsChart(Request $request)
     {
-        $year = $request->get('year', date('Y'));
-
         try {
+            $year = $request->get('year', date('Y'));
+
             $paiementsStats = PlanPaiement::selectRaw('
                 SUM(CASE WHEN statut_versement = "paye_a_temps" THEN 1 ELSE 0 END) as payes_a_temps,
                 SUM(CASE WHEN statut_versement = "paye_en_retard" THEN 1 ELSE 0 END) as payes_en_retard,
@@ -120,18 +114,11 @@ class StatistiqueController extends Controller
                 ]
             ];
 
-            return response()->json([
-                'success' => true,
-                'data' => $data,
-                'year' => $year
-            ]);
+            $data['year'] = $year;
+            return $this->responseSuccess($data, "Données de paiements récupérées avec succès");
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des données de paiements',
-                'error' => $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des données de paiements : " . $e->getMessage(), 500);
         }
     }
 
@@ -141,9 +128,9 @@ class StatistiqueController extends Controller
      */
     public function getSouscriptionsChart(Request $request)
     {
-        $year = $request->get('year', date('Y'));
-
         try {
+            $year = $request->get('year', date('Y'));
+
             $souscriptionsData = Souscription::select(
                 DB::raw('MONTH(date_souscription) as mois'),
                 DB::raw('COUNT(*) as nombre')
@@ -175,22 +162,15 @@ class StatistiqueController extends Controller
                         'borderColor' => '#0056b3',
                         'borderWidth' => 1
                     ]
-                ]
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $chartData,
+                ],
                 'year' => $year,
                 'total' => array_sum($data)
-            ]);
+            ];
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des données de souscriptions',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->responseSuccess($chartData, "Données de souscriptions récupérées avec succès");
+
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des données de souscriptions : " . $e->getMessage(), 500);
         }
     }
 
@@ -200,9 +180,9 @@ class StatistiqueController extends Controller
      */
     public function getEvenementsChart(Request $request)
     {
-        $year = $request->get('year', date('Y'));
-
         try {
+            $year = $request->get('year', date('Y'));
+
             $evenementsData = Evenement::select(
                 DB::raw('MONTH(date_fin_evenement) as mois'),
                 DB::raw('COUNT(*) as nombre')
@@ -236,22 +216,15 @@ class StatistiqueController extends Controller
                         'tension' => 0.4,
                         'fill' => true
                     ]
-                ]
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $chartData,
+                ],
                 'year' => $year,
                 'total' => array_sum($data)
-            ]);
+            ];
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des données d\'événements',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->responseSuccess($chartData, "Données d'événements récupérées avec succès");
+
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des données d'événements : " . $e->getMessage(), 500);
         }
     }
 
@@ -261,24 +234,24 @@ class StatistiqueController extends Controller
      */
     public function getReclamationsChart(Request $request)
     {
-        $year = $request->get('year', date('Y'));
-
         try {
+            $year = $request->get('year', date('Y'));
+
             $reclamationsData = Reclamation::join('StatutReclamation', 'Reclamation.id_statut_reclamation', '=', 'StatutReclamation.id_statut_reclamation')
                 ->select(
-                    'StatutReclamation.nom_statut',
+                    'StatutReclamation.libelle_statut_reclamation',
                     DB::raw('COUNT(*) as nombre')
                 )
                 ->whereYear('Reclamation.date_reclamation', $year)
-                ->groupBy('StatutReclamation.nom_statut')
+                ->groupBy('StatutReclamation.libelle_statut_reclamation')
                 ->get();
 
             // Mapping des statuts pour correspondre à l'interface
             $statusMapping = [
-                'Résolue' => 'Résolues',
-                'En cours' => 'En cours', 
-                'En attente' => 'En attente',
-                'Rejetée' => 'Rejetées'
+                'Résolue' => 0,
+                'En cours' => 1, 
+                'En attente' => 2,
+                'Rejetée' => 3
             ];
 
             $labels = ['Résolues', 'En cours', 'En attente', 'Rejetées'];
@@ -286,9 +259,8 @@ class StatistiqueController extends Controller
             
             foreach ($reclamationsData as $item) {
                 $status = $item->libelle_statut_reclamation;
-                $index = array_search($statusMapping[$status] ?? $status, $labels);
-                if ($index !== false) {
-                    $data[$index] = (int)$item->nombre;
+                if (isset($statusMapping[$status])) {
+                    $data[$statusMapping[$status]] = (int)$item->nombre;
                 }
             }
 
@@ -312,21 +284,14 @@ class StatistiqueController extends Controller
                     'en_attente' => $data[2],
                     'rejetees' => $data[3],
                     'total' => array_sum($data)
-                ]
+                ],
+                'year' => $year
             ];
 
-            return response()->json([
-                'success' => true,
-                'data' => $chartData,
-                'year' => $year
-            ]);
+            return $this->responseSuccess($chartData, "Données de réclamations récupérées avec succès");
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des données de réclamations',
-                'error' => $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des données de réclamations : " . $e->getMessage(), 500);
         }
     }
 
@@ -336,9 +301,9 @@ class StatistiqueController extends Controller
      */
     public function getRecentActivities(Request $request)
     {
-        $limit = $request->get('limit', 10);
-
         try {
+            $limit = $request->get('limit', 10);
+
             $activities = collect();
 
             // Nouveaux paiements (derniers 7 jours)
@@ -415,17 +380,10 @@ class StatistiqueController extends Controller
                 return Carbon::now()->subMinutes($this->getMinutesFromRelativeTime($activity['time']));
             })->take($limit)->values();
 
-            return response()->json([
-                'success' => true,
-                'data' => $sortedActivities->toArray()
-            ]);
+            return $this->responseSuccess($sortedActivities->toArray(), "Activités récentes récupérées avec succès");
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des activités récentes',
-                'error' => $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des activités récentes : " . $e->getMessage(), 500);
         }
     }
 
@@ -480,17 +438,10 @@ class StatistiqueController extends Controller
                 ];
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $alertes
-            ]);
+            return $this->responseSuccess($alertes, "Alertes récupérées avec succès");
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des alertes',
-                'error' => $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des alertes : " . $e->getMessage(), 500);
         }
     }
 
@@ -510,22 +461,15 @@ class StatistiqueController extends Controller
                 'evenementsChart' => $this->getEvenementsChartData($year),
                 'reclamationsChart' => $this->getReclamationsChartData($year),
                 'recentActivities' => $this->getRecentActivitiesData(),
-                'alertes' => $this->getAlertesData()
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $data,
+                'alertes' => $this->getAlertesData(),
                 'year' => $year,
                 'generated_at' => now()->toDateTimeString()
-            ]);
+            ];
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération complète du dashboard',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->responseSuccess($data, "Dashboard complet récupéré avec succès");
+
+        } catch (Exception $e) {
+            return $this->responseError("Erreur lors de la récupération complète du dashboard : " . $e->getMessage(), 500);
         }
     }
 
