@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\PlanPaiementController;
 use App\Http\Controllers\Api\ReclamationController;
+use App\Http\Controllers\Api\StatistiqueController;
 use App\Http\Controllers\Api\TypeRecompenseController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SouscriptionController;
@@ -63,6 +64,35 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
     Route::post('register', [RegisterController::class, 'register']);
+
+
+
+    // Routes Dashboard/Statistiques - Groupées sous le préfixe /dashboard
+    Route::prefix('dashboard')->group(function () {
+        // API 1: Statistiques générales (stats object)
+        Route::get('/stats', [StatistiqueController::class, 'getStats']);
+        
+        // API 2: Données graphique paiements (doughnut chart)
+        Route::get('/paiements-chart', [StatistiqueController::class, 'getPaiementsChart']);
+        
+        // API 3: Données graphique souscriptions (bar chart)
+        Route::get('/souscriptions-chart', [StatistiqueController::class, 'getSouscriptionsChart']);
+        
+        // API 4: Données graphique événements (line chart)
+        Route::get('/evenements-chart', [StatistiqueController::class, 'getEvenementsChart']);
+        
+        // API 5: Données graphique réclamations (pie chart)
+        Route::get('/reclamations-chart', [StatistiqueController::class, 'getReclamationsChart']);
+        
+        // API 6: Activités récentes (recentActivities array)
+        Route::get('/recent-activities', [StatistiqueController::class, 'getRecentActivities']);
+        
+        // API 7: Alertes importantes (alertes array)
+        Route::get('/alertes', [StatistiqueController::class, 'getAlertes']);
+        
+        // API 8: Données complètes du dashboard (une seule requête)
+        Route::get('/complete', [StatistiqueController::class, 'getDashboardComplete']);
+    });
 });
 
 
