@@ -83,6 +83,8 @@ class Souscription extends Model
     public const STATUT_EN_ATTENTE = 'en_attente';
     public const STATUT_REJETE     = 'rejete';
 
+    public const STATUT_EN_COUR = 'en_cour';
+
       // Constantes pour l’origine
     public const ORIGINE_ADMIN       = 'admin';
     public const ORIGINE_UTILISATEUR = 'utilisateur';

@@ -22,9 +22,9 @@ class SouscriptionController extends Controller
         try {
             $perPage = $request->input('per_page', 5);
             $search  = $request->input('search');
-           
-
-            $query = Souscription::with(['terrain', 'admin','utilisateur'])->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
+        
+            $query = Souscription::with(['terrain', 'admin', 'utilisateur', 'planpaiements'])
+                ->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
@@ -48,9 +48,9 @@ class SouscriptionController extends Controller
             $souscriptions->getCollection()->transform(function ($souscription) {
 
                 // Prix total du terrain
-               $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
+                $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
 
-                // Montant payé = somme des paiements effectués dans PlanPaiement
+                // Montant payé
                 $montantPaye = $souscription->planpaiements()
                                     ->whereNotNull('date_paiement_effectif')
                                     ->sum('montant_paye');
@@ -58,17 +58,29 @@ class SouscriptionController extends Controller
                 // Reste à payer
                 $reste = $prixTotal - $montantPaye;
 
-                // Prochain paiement prévu
-                $prochainPaiement = $souscription->planpaiements()
-                                        ->whereNull('date_paiement_effectif')
-                                        ->orderBy('date_limite_versement', 'asc')
-                                        ->first();
-
-                // Si aucun paiement trouvé, prendre date_souscription + 1 mois
-                if ($prochainPaiement) {
-                    $dateProchain = $prochainPaiement->date_limite_versement;
+                // ✅ Détermination du statut dynamique
+                if ($montantPaye == 0) {
+                    $statut = Souscription::STATUT_EN_ATTENTE;
+                } elseif ($reste <= 0) {
+                    $statut = Souscription::STATUT_TERMINEE;
                 } else {
-                    $dateProchain = Carbon::parse($souscription->date_souscription)->addMonth()->format('Y-m-d');
+                    $statut = Souscription::STATUT_EN_COUR;
+                }
+
+                // ✅ Détermination de la date du prochain paiement
+                $dernierPaiement = $souscription->planpaiements()
+                                    ->whereNotNull('date_paiement_effectif')
+                                    ->orderBy('date_paiement_effectif', 'desc')
+                                    ->first();
+
+                if ($dernierPaiement) {
+                    $dateProchain = Carbon::parse($dernierPaiement->date_paiement_effectif)
+                                        ->addMonthNoOverflow()
+                                        ->format('Y-m-d');
+                } else {
+                    $dateProchain = Carbon::parse($souscription->date_debut_paiement ?? $souscription->date_souscription)
+                                        ->addMonthNoOverflow()
+                                        ->format('Y-m-d');
                 }
 
                 // Injecter dans l’objet retourné
@@ -76,6 +88,7 @@ class SouscriptionController extends Controller
                 $souscription->montant_paye = $montantPaye;
                 $souscription->reste_a_payer = max($reste, 0);
                 $souscription->date_prochain = $dateProchain;
+                $souscription->statut_dynamique = $statut;
 
                 return $souscription;
             });
@@ -86,6 +99,7 @@ class SouscriptionController extends Controller
             return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
         }
     }
+
 
 
 
@@ -122,11 +136,10 @@ class SouscriptionController extends Controller
 
             // 🔥 Enrichir chaque souscription
             $souscriptions->getCollection()->transform(function ($souscription) {
-
                 // Prix total du terrain
                 $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
 
-                // Montant payé = somme des paiements effectués dans PlanPaiement
+                // Montant payé = somme des paiements effectués
                 $montantPaye = $souscription->planpaiements()
                                     ->whereNotNull('date_paiement_effectif')
                                     ->sum('montant_paye');
@@ -134,17 +147,27 @@ class SouscriptionController extends Controller
                 // Reste à payer
                 $reste = $prixTotal - $montantPaye;
 
-                // Prochain paiement prévu
-                $prochainPaiement = $souscription->planpaiements()
-                                        ->whereNull('date_paiement_effectif')
-                                        ->orderBy('date_limite_versement', 'asc')
+                // 🔥 Détermination du statut dynamique
+                if ($montantPaye == 0) {
+                    $statut = Souscription::STATUT_EN_ATTENTE;
+                } elseif ($reste <= 0) {
+                    $statut = Souscription::STATUT_TERMINEE;
+                } else {
+                    $statut = Souscription::STATUT_EN_COUR; // statut calculé, non présent dans la table
+                }
+
+                // 🔥 Détermination de la date du prochain paiement
+                $dernierPaiement = $souscription->planpaiements()
+                                        ->whereNotNull('date_paiement_effectif')
+                                        ->orderBy('date_paiement_effectif', 'desc')
                                         ->first();
 
-                 // Si aucun paiement trouvé, prendre date_souscription + 1 mois
-                if ($prochainPaiement) {
-                    $dateProchain = $prochainPaiement->date_limite_versement;
+                if ($dernierPaiement) {
+                    $dateProchain = Carbon::parse($dernierPaiement->date_paiement_effectif)->addMonth()->format('Y-m-d');
                 } else {
-                    $dateProchain = Carbon::parse($souscription->date_souscription)->addMonth()->format('Y-m-d');
+                    $dateProchain = Carbon::parse($souscription->date_debut_paiement ?? $souscription->date_souscription)
+                                        ->addMonth()
+                                        ->format('Y-m-d');
                 }
 
                 // Injecter dans l’objet retourné
@@ -152,9 +175,11 @@ class SouscriptionController extends Controller
                 $souscription->montant_paye = $montantPaye;
                 $souscription->reste_a_payer = max($reste, 0);
                 $souscription->date_prochain = $dateProchain;
+                $souscription->statut_dynamique = $statut; // ⚡ Nouveau champ calculé
 
                 return $souscription;
             });
+
 
             return $this->responseSuccessPaginate($souscriptions, "Liste des souscriptions");
 
@@ -165,10 +190,8 @@ class SouscriptionController extends Controller
 
 
 
+    
     /**
-     * Récupérer toutes les demandes de souscription utilisateur en attente.
-     */
-  /**
      * Récupérer toutes les demandes de souscription utilisateur en attente.
      */
     public function indexDemandes(Request $request)
@@ -198,12 +221,13 @@ class SouscriptionController extends Controller
                             ->paginate($perPage);
 
             // 🔥 Enrichir chaque demande
+           // 🔥 Enrichir chaque demande
             $demandes->getCollection()->transform(function ($souscription) {
 
                 // Prix total du terrain
-               $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
+                $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
 
-                // Montant payé = somme des paiements effectués dans PlanPaiement
+                // Montant payé
                 $montantPaye = $souscription->planpaiements()
                                     ->whereNotNull('date_paiement_effectif')
                                     ->sum('montant_paye');
@@ -211,17 +235,29 @@ class SouscriptionController extends Controller
                 // Reste à payer
                 $reste = $prixTotal - $montantPaye;
 
-                // Prochain paiement prévu
-                $prochainPaiement = $souscription->planpaiements()
-                                        ->whereNull('date_paiement_effectif')
-                                        ->orderBy('date_limite_versement', 'asc')
-                                        ->first();
-
-                // Si aucun paiement trouvé, prendre date_souscription + 1 mois
-                if ($prochainPaiement) {
-                    $dateProchain = $prochainPaiement->date_limite_versement;
+                // ✅ Détermination du statut dynamique
+                if ($montantPaye == 0) {
+                    $statut = Souscription::STATUT_EN_ATTENTE;
+                } elseif ($reste <= 0) {
+                    $statut = Souscription::STATUT_TERMINEE;
                 } else {
-                    $dateProchain = Carbon::parse($souscription->date_souscription)->addMonth()->format('Y-m-d');
+                    $statut = Souscription::STATUT_EN_COUR;
+                }
+
+                // ✅ Détermination de la date du prochain paiement
+                $dernierPaiement = $souscription->planpaiements()
+                                    ->whereNotNull('date_paiement_effectif')
+                                    ->orderBy('date_paiement_effectif', 'desc')
+                                    ->first();
+
+                if ($dernierPaiement) {
+                    $dateProchain = Carbon::parse($dernierPaiement->date_paiement_effectif)
+                                        ->addMonthNoOverflow()
+                                        ->format('Y-m-d');
+                } else {
+                    $dateProchain = Carbon::parse($souscription->date_debut_paiement ?? $souscription->date_souscription)
+                                        ->addMonthNoOverflow()
+                                        ->format('Y-m-d');
                 }
 
                 // Injecter dans l’objet retourné
@@ -229,6 +265,7 @@ class SouscriptionController extends Controller
                 $souscription->montant_paye = $montantPaye;
                 $souscription->reste_a_payer = max($reste, 0);
                 $souscription->date_prochain = $dateProchain;
+                $souscription->statut_dynamique = $statut;
 
                 return $souscription;
             });
@@ -251,7 +288,7 @@ class SouscriptionController extends Controller
 
             $user = JWTAuth::parseToken()->authenticate();
 
-            $query = Souscription::with(['utilisateur', 'terrain','admin'])
+            $query = Souscription::with(['utilisateur', 'terrain', 'admin', 'planpaiements'])
                 ->where('origine', Souscription::ORIGINE_UTILISATEUR)
                 ->where('statut_souscription', Souscription::STATUT_EN_ATTENTE)
                 ->where('id_utilisateur', $user->id_utilisateur);
@@ -272,10 +309,9 @@ class SouscriptionController extends Controller
             $demandes->getCollection()->transform(function ($souscription) {
 
                 // Prix total du terrain
-                
                 $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
 
-                // Montant payé = somme des paiements effectués dans PlanPaiement
+                // Montant payé
                 $montantPaye = $souscription->planpaiements()
                                     ->whereNotNull('date_paiement_effectif')
                                     ->sum('montant_paye');
@@ -283,17 +319,29 @@ class SouscriptionController extends Controller
                 // Reste à payer
                 $reste = $prixTotal - $montantPaye;
 
-                // Prochain paiement prévu
-                $prochainPaiement = $souscription->planpaiements()
-                                        ->whereNull('date_paiement_effectif')
-                                        ->orderBy('date_limite_versement', 'asc')
-                                        ->first();
-
-                // Si aucun paiement trouvé, prendre date_souscription + 1 mois
-                if ($prochainPaiement) {
-                    $dateProchain = $prochainPaiement->date_limite_versement;
+                // ✅ Détermination du statut dynamique
+                if ($montantPaye == 0) {
+                    $statut = Souscription::STATUT_EN_ATTENTE;
+                } elseif ($reste <= 0) {
+                    $statut = Souscription::STATUT_TERMINEE;
                 } else {
-                    $dateProchain = Carbon::parse($souscription->date_souscription)->addMonth()->format('Y-m-d');
+                    $statut = Souscription::STATUT_EN_COUR;
+                }
+
+                // ✅ Détermination de la date du prochain paiement
+                $dernierPaiement = $souscription->planpaiements()
+                                    ->whereNotNull('date_paiement_effectif')
+                                    ->orderBy('date_paiement_effectif', 'desc')
+                                    ->first();
+
+                if ($dernierPaiement) {
+                    $dateProchain = Carbon::parse($dernierPaiement->date_paiement_effectif)
+                                        ->addMonthNoOverflow()
+                                        ->format('Y-m-d');
+                } else {
+                    $dateProchain = Carbon::parse($souscription->date_debut_paiement ?? $souscription->date_souscription)
+                                        ->addMonthNoOverflow()
+                                        ->format('Y-m-d');
                 }
 
                 // Injecter dans l’objet retourné
@@ -301,16 +349,18 @@ class SouscriptionController extends Controller
                 $souscription->montant_paye = $montantPaye;
                 $souscription->reste_a_payer = max($reste, 0);
                 $souscription->date_prochain = $dateProchain;
+                $souscription->statut_dynamique = $statut;
 
                 return $souscription;
             });
 
             return $this->responseSuccessPaginate($demandes, "Liste des demandes de souscription de l'utilisateur");
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->responseError("Erreur lors de la récupération des demandes : " . $e->getMessage(), 500);
         }
     }
+
 
 
     /**
