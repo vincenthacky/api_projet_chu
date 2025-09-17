@@ -102,15 +102,17 @@ class AuthController extends Controller
     /**
      * 👤 Récupérer l’utilisateur connecté
      */
-    public function me()
-    {
-        try {
-            $user = JWTAuth::parseToken()->authenticate();
-            return $this->responseSuccess($user, "Utilisateur connecté récupéré avec succès");
-        } catch (JWTException $e) {
-            return $this->responseError("Impossible de récupérer l'utilisateur connecté", 500);
-        }
+   public function me()
+{
+    try {
+        $user = JWTAuth::parseToken()->authenticate();
+        $user->load(['cni', 'carteProfessionnelle', 'ficheSouscription', 'photoProfil']);
+        return $this->responseSuccess($user, "Utilisateur connecté");
+    } catch (\Exception $e) {
+        return $this->responseError("Impossible de récupérer l'utilisateur connecté : " . $e->getMessage(), 401);
     }
+}
+
 
 
     
