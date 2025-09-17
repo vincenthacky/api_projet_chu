@@ -86,13 +86,13 @@ class UtilisateurController extends Controller
     /**
      * Récupérer les infos de l'utilisateur connecté (via JWT).
     */
-    public function me()
+   public function me()
     {
         try {
-            $user = JWTAuth::parseToken()->authenticate();
+            $id = JWTAuth::parseToken()->authenticate()->id;
 
-            // Charger les relations
-            $user->load(['cni', 'carteProfessionnelle', 'ficheSouscription', 'photoProfil']);
+            $user = Utilisateur::with(['cni', 'carteProfessionnelle', 'ficheSouscription', 'photoProfil'])
+                ->findOrFail($id);
 
             return $this->responseSuccess($user, "Utilisateur connecté");
 
@@ -100,6 +100,7 @@ class UtilisateurController extends Controller
             return $this->responseError("Impossible de récupérer l'utilisateur connecté : " . $e->getMessage(), 401);
         }
     }
+
 
 
     /**
