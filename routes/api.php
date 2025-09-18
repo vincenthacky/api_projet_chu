@@ -49,6 +49,10 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::get('documents/utilisateur', [DocumentController::class, 'indexUtilisateur']);
     Route::get('terrains/utilisateur', [TerrainController::class, 'indexUtilisateur']);
 
+    // web.php ou api.php
+   Route::post('/utilisateur/{id}/update', [UtilisateurController::class, 'update']);
+
+
 
     Route::apiResource('souscriptions', SouscriptionController::class);
     Route::apiResource('utilisateurs', UtilisateurController::class);
