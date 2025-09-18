@@ -50,7 +50,7 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::get('terrains/utilisateur', [TerrainController::class, 'indexUtilisateur']);
 
     // web.php ou api.php
-   Route::post('utilisateur/{id}/update', [UtilisateurController::class, 'update']);
+   Route::post('utilisateurs/{id}/update', [UtilisateurController::class, 'update']);
 
 
 
