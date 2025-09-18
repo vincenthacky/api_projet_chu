@@ -34,7 +34,7 @@ class SouscriptionController extends Controller
                         $q3->where('libelle', 'like', "%{$search}%")
                             ->orWhere('localisation', 'like', "%{$search}%");
                     })
-                    ->orWhereHas('admin', function ($q4) use ($search) {
+                    ->orWhereHas('utilisateur', function ($q4) use ($search) {
                         $q4->where('nom', 'like', "%{$search}%")
                             ->orWhere('prenom', 'like', "%{$search}%");
                     });
