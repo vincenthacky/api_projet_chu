@@ -36,7 +36,7 @@ class AuthController extends Controller
             $token = JWTAuth::fromUser($user);
             $user->derniere_connexion = now();
             $user->save();
-            $user->load('photoProfil');
+            $user->load('photoProfil','cni','carteProfessionnelle','ficheSouscription');
 
             $data = [
                 'user'  => $user,
