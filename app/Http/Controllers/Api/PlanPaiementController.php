@@ -210,6 +210,7 @@ class PlanPaiementController extends Controller
                 'montant_paye'    => 'nullable|numeric|min:0',
                 'date_paiement_effectif' => 'nullable|date',
                 'commentaire_paiement' => 'nullable|string|max:255',
+                'reference_paiement' => 'nullable|string|max:100',
             ]);
 
             // Récupérer la souscription
