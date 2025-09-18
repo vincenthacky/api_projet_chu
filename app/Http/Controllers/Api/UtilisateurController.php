@@ -234,6 +234,9 @@ class UtilisateurController extends Controller
                 ], 422);
             }
 
+            dd($request->all(), $request->files->all());
+
+
             // ✅ Mise à jour des infos utilisateur
             $user->update([
                 'nom'        => $request->nom ?? $user->nom,
