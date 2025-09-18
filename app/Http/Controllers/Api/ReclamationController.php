@@ -40,7 +40,7 @@ class ReclamationController extends Controller
             // 🎯 Filtres spécifiques
             if ($statut) {
                 $query->whereHas('statut', function ($q) use ($statut) {
-                    $q->where('libelle', 'like', "%{$statut}%");
+                    $q->where('id_statut_reclamation', 'like', "%{$statut}%");
                 });
             }
 
