@@ -29,7 +29,7 @@ class SouscriptionController extends Controller
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('id_souscription', 'like', "%{$search}%")
-                    ->orWhere('groupe_souscription', 'like', "%{$search}%")
+                   
                     ->orWhereHas('terrain', function ($q3) use ($search) {
                         $q3->where('libelle', 'like', "%{$search}%")
                             ->orWhere('localisation', 'like', "%{$search}%");
@@ -119,7 +119,7 @@ class SouscriptionController extends Controller
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('id_souscription', 'like', "%{$search}%")
-                    ->orWhere('groupe_souscription', 'like', "%{$search}%")
+                  
                     ->orWhereHas('terrain', function ($q3) use ($search) {
                         $q3->where('libelle', 'like', "%{$search}%")
                             ->orWhere('localisation', 'like', "%{$search}%");

@@ -32,9 +32,7 @@ class RecompenseController extends Controller
                       ->orWhereHas('typeRecompense', function ($q2) use ($search) {
                           $q2->where('libelle_type_recompense', 'like', "%{$search}%");
                       })
-                      ->orWhereHas('souscription', function ($q3) use ($search) {
-                          $q3->where('groupe_souscription', 'like', "%{$search}%");
-                      });
+                     ;
                 });
             }
 
@@ -72,9 +70,7 @@ class RecompenseController extends Controller
                       ->orWhereHas('typeRecompense', function ($q2) use ($search) {
                           $q2->where('libelle_type_recompense', 'like', "%{$search}%");
                       })
-                      ->orWhereHas('souscription', function ($q3) use ($search) {
-                          $q3->where('groupe_souscription', 'like', "%{$search}%");
-                      });
+                     ;
                 });
             }
 

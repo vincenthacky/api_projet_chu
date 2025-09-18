@@ -28,9 +28,7 @@ class ReclamationController extends Controller
                     $q->where('id_reclamation', 'like', "%{$search}%")
                       ->orWhere('titre', 'like', "%{$search}%")
                       ->orWhere('description', 'like', "%{$search}%")
-                      ->orWhereHas('souscription', function ($q2) use ($search) {
-                          $q2->where('groupe_souscription', 'like', "%{$search}%");
-                      });
+                     ;
                 });
             }
 
@@ -65,9 +63,7 @@ class ReclamationController extends Controller
                     $q->where('id_reclamation', 'like', "%{$search}%")
                       ->orWhere('titre', 'like', "%{$search}%")
                       ->orWhere('description', 'like', "%{$search}%")
-                      ->orWhereHas('souscription', function ($q2) use ($search) {
-                          $q2->where('groupe_souscription', 'like', "%{$search}%");
-                      });
+                     ;
                 });
             }
 

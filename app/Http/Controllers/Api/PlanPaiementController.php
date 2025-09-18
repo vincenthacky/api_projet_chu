@@ -27,9 +27,7 @@ class PlanPaiementController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->where('id_plan_paiement', 'like', "%{$search}%")
                       ->orWhere('numero_mensualite', 'like', "%{$search}%")
-                      ->orWhereHas('souscription', function ($q2) use ($search) {
-                          $q2->where('groupe_souscription', 'like', "%{$search}%");
-                      });
+                      ;
                 });
             }
 
@@ -87,9 +85,7 @@ class PlanPaiementController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->where('id_plan_paiement', 'like', "%{$search}%")
                       ->orWhere('numero_mensualite', 'like', "%{$search}%")
-                      ->orWhereHas('souscription', function ($q2) use ($search) {
-                          $q2->where('groupe_souscription', 'like', "%{$search}%");
-                      });
+                     ;
                 });
             }
 

@@ -37,9 +37,7 @@ class DocumentController extends Controller
                       ->orWhere('nom_original', 'like', "%{$search}%")
                       ->orWhere('chemin_fichier', 'like', "%{$search}%")
                       ->orWhere('description_document', 'like', "%{$search}%")
-                      ->orWhereHas('souscription', function ($q2) use ($search) {
-                          $q2->where('groupe_souscription', 'like', "%{$search}%");
-                      })
+                    
                       ->orWhereHas('typeDocument', function ($q3) use ($search) {
                           $q3->where('libelle_type_document', 'like', "%{$search}%");
                       });
@@ -77,9 +75,7 @@ class DocumentController extends Controller
                       ->orWhere('nom_original', 'like', "%{$search}%")
                       ->orWhere('chemin_fichier', 'like', "%{$search}%")
                       ->orWhere('description_document', 'like', "%{$search}%")
-                      ->orWhereHas('souscription', function ($q2) use ($search) {
-                          $q2->where('groupe_souscription', 'like', "%{$search}%");
-                      })
+                     
                       ->orWhereHas('typeDocument', function ($q3) use ($search) {
                           $q3->where('libelle_type_document', 'like', "%{$search}%");
                       });
