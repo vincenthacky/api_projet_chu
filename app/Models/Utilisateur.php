@@ -153,30 +153,40 @@ class Utilisateur extends Authenticatable implements JWTSubject
     {
         return $this->hasOne(Document::class, 'id_source', 'id_utilisateur')
             ->where('source_table', 'utilisateurs')
-            ->whereHas('typeDocument', fn($q) => $q->where('libelle_type_document', 'CNI'));
+            ->whereHas('typeDocument', fn($q) => 
+                $q->where('libelle_type_document', 'CNI')
+            )
+            ->latest('created_at'); // ✅ prend toujours le plus récent
     }
 
-    // 📂 Document spécifique : Carte Professionnelle
     public function carteProfessionnelle()
     {
         return $this->hasOne(Document::class, 'id_source', 'id_utilisateur')
             ->where('source_table', 'utilisateurs')
-            ->whereHas('typeDocument', fn($q) => $q->where('libelle_type_document', 'Carte Professionnelle'));
+            ->whereHas('typeDocument', fn($q) => 
+                $q->where('libelle_type_document', 'Carte Professionnelle')
+            )
+            ->latest('created_at');
     }
 
-    // 📂 Document spécifique : Fiche de Souscription
     public function ficheSouscription()
     {
         return $this->hasOne(Document::class, 'id_source', 'id_utilisateur')
             ->where('source_table', 'utilisateurs')
-            ->whereHas('typeDocument', fn($q) => $q->where('libelle_type_document', 'Fiche de Souscription'));
+            ->whereHas('typeDocument', fn($q) => 
+                $q->where('libelle_type_document', 'Fiche de Souscription')
+            )
+            ->latest('created_at');
     }
 
-    // 📂 Document spécifique : Photo de Profil
     public function photoProfil()
     {
         return $this->hasOne(Document::class, 'id_source', 'id_utilisateur')
             ->where('source_table', 'utilisateurs')
-            ->whereHas('typeDocument', fn($q) => $q->where('libelle_type_document', 'Photo de Profil'));
+            ->whereHas('typeDocument', fn($q) => 
+                $q->where('libelle_type_document', 'Photo de Profil')
+            )
+            ->latest('created_at');
     }
+
 }
