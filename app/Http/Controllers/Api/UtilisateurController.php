@@ -234,7 +234,7 @@ class UtilisateurController extends Controller
                 ], 422);
             }
 
-            dd($request->files->all());
+    
 
 
             // ✅ Mise à jour des infos utilisateur
