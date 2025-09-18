@@ -200,34 +200,87 @@ class UtilisateurController extends Controller
     /**
      * Mettre à jour un utilisateur.
      */
-    public function update(Request $request, $id)
+    /**
+     * Mettre à jour un utilisateur.
+     */
+    public function update(Request $request, DocumentService $documentService, $id)
     {
         DB::beginTransaction();
         try {
-            $utilisateur = Utilisateur::findOrFail($id);
+            $user = Utilisateur::findOrFail($id);
 
-            $request->validate([
-                'nom'        => 'sometimes|string|max:100',
-                'prenom'     => 'sometimes|string|max:100',
-                'email'      => 'sometimes|email|unique:Utilisateur,email,' . $utilisateur->id_utilisateur . ',id_utilisateur',
-                'telephone'  => 'sometimes|string|max:20',
-                'type'       => 'sometimes|in:user,admin',
-                'statut_utilisateur' => 'sometimes|in:actif,suspendu,inactif',
+            // ✅ Validation avec exceptions pour email/téléphone (ignore l'utilisateur en cours)
+            $validator = Validator::make($request->all(), [
+                'nom'          => 'sometimes|required|string|max:100',
+                'prenom'       => 'sometimes|required|string|max:100',
+                'email'        => "nullable|string|email|max:150|unique:Utilisateur,email,{$user->id_utilisateur},id_utilisateur",
+                'telephone'    => "nullable|string|max:20|unique:Utilisateur,telephone,{$user->id_utilisateur},id_utilisateur",
+                'mot_de_passe' => 'nullable|string|min:6',
+                'poste'        => 'nullable|string|max:100',
+                'service'      => 'nullable|string|max:100',
+                'type'         => 'nullable|string|max:40',
+
+                // 📂 Validation des fichiers
+                'cni'                  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'carte_professionnel'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'fiche_souscription'   => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10240',
+                'photo_profil'         => 'nullable|image|mimes:jpg,jpeg,png|max:10240',
             ]);
 
-            $data = $request->all();
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
 
-            $utilisateur->update($data);
+            // ✅ Mise à jour des infos utilisateur
+            $user->update([
+                'nom'        => $request->nom ?? $user->nom,
+                'prenom'     => $request->prenom ?? $user->prenom,
+                'email'      => $request->email ?? $user->email,
+                'telephone'  => $request->telephone ?? $user->telephone,
+                'poste'      => $request->poste ?? $user->poste,
+                'service'    => $request->service ?? $user->service,
+                'type'       => $request->type ?? $user->type,
+                // 🔐 mot de passe mis à jour seulement si présent
+                'mot_de_passe' => $request->filled('mot_de_passe')
+                                    ? bcrypt($request->mot_de_passe)
+                                    : $user->mot_de_passe,
+            ]);
+
+            // ✅ Upload / remplacement des documents
+            $documents = [
+                'cni'                 => 'CNI',
+                'carte_professionnel' => 'Carte Professionnelle',
+                'fiche_souscription'  => 'Fiche de Souscription',
+                'photo_profil'        => 'Photo de Profil',
+            ];
+
+            foreach ($documents as $champ => $libelle) {
+                if ($request->hasFile($champ)) {
+                    $documentService->store(
+                        idSouscription: null,
+                        libelleTypeDocument: $libelle,
+                        options: [
+                            'source_table'         => 'utilisateurs',
+                            'source_id'            => $user->id_utilisateur,
+                            'description_document' => "Mise à jour du document {$libelle} de l'utilisateur {$user->nom} {$user->prenom}",
+                        ],
+                        fichier: $request->file($champ)
+                    );
+                }
+            }
 
             DB::commit();
-
-            return $this->responseSuccessMessage("Utilisateur mis à jour avec succès");
+            return $this->responseSuccessMessage("Utilisateur mis à jour avec succès", 200);
 
         } catch (Exception $e) {
             DB::rollBack();
             return $this->responseError("Erreur lors de la mise à jour de l'utilisateur : " . $e->getMessage(), 500);
         }
     }
+
 
     /**
      * Supprimer un utilisateur.
