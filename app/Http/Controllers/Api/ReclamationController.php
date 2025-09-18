@@ -18,29 +18,65 @@ class ReclamationController extends Controller
     public function index(Request $request)
     {
         try {
-            $perPage = $request->input('per_page', 15);
-            $search  = $request->input('search');
+            $perPage   = $request->input('per_page', 15);
+            $search    = $request->input('search');
+            $statut    = $request->input('statut');
+            $type      = $request->input('type');
+            $priorite  = $request->input('priorite');
+            $userName  = $request->input('utilisateur'); // nom ou prénom utilisateur
+            $adminName = $request->input('admin');       // nom ou prénom admin
 
             $query = Reclamation::with(['souscription.utilisateur', 'statut']);
 
+            // 🔎 Recherche globale
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('id_reclamation', 'like', "%{$search}%")
-                      ->orWhere('titre', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%")
-                     ;
+                    ->orWhere('titre', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
                 });
             }
 
+            // 🎯 Filtres spécifiques
+            if ($statut) {
+                $query->whereHas('statut', function ($q) use ($statut) {
+                    $q->where('libelle', 'like', "%{$statut}%");
+                });
+            }
+
+            if ($type) {
+                $query->where('type_reclamation', $type);
+            }
+
+            if ($priorite) {
+                $query->where('priorite', $priorite);
+            }
+
+            if ($userName) {
+                $query->whereHas('souscription.utilisateur', function ($q) use ($userName) {
+                    $q->where('nom', 'like', "%{$userName}%")
+                    ->orWhere('prenom', 'like', "%{$userName}%");
+                });
+            }
+
+            if ($adminName) {
+                $query->whereHas('statut.admin', function ($q) use ($adminName) {
+                    $q->where('nom', 'like', "%{$adminName}%")
+                    ->orWhere('prenom', 'like', "%{$adminName}%");
+                });
+            }
+
+            // 📌 Tri + pagination
             $reclamations = $query->orderBy('date_reclamation', 'desc')
-                                  ->paginate($perPage);
+                                ->paginate($perPage);
 
             return $this->responseSuccessPaginate($reclamations, "Liste des réclamations");
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->responseError("Erreur lors de la récupération des réclamations : " . $e->getMessage(), 500);
         }
     }
+
 
      /**
      * Récupère toutes les réclamations avec pagination et recherche avancée.
