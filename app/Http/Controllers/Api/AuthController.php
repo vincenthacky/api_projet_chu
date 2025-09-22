@@ -33,6 +33,11 @@ class AuthController extends Controller
                 return $this->responseError("Identifiant ou mot de passe incorrect", 401);
             }
 
+            // ✅ Vérifier le statut de l'utilisateur
+            if ($user->statut_utilisateur !== Utilisateur::STATUT_ACTIF) {
+                return $this->responseError("Votre compte est inactif ou suspendu. Veuillez contacter l’administrateur.", 403);
+            }
+
             $token = JWTAuth::fromUser($user);
             $user->derniere_connexion = now();
             $user->save();
