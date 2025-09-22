@@ -62,7 +62,7 @@ class AuthController extends Controller
 
             // Données de session
             $sessionData = [
-                'user_id' => $user->id,
+                'user_id' => $user->id_utiilisateur,
                 'jwt_id' => $jwtId,
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->header('User-Agent'),
@@ -87,7 +87,7 @@ class AuthController extends Controller
             }
 
             // Nettoyer les anciennes sessions expirées
-            $this->cleanupExpiredSessions($user->id);
+            $this->cleanupExpiredSessions($user->id_utilisateur);
 
             // Mettre à jour l'utilisateur
             $user->derniere_connexion = now();
@@ -116,7 +116,7 @@ class AuthController extends Controller
 
             if ($jwtId) {
                 UserSession::where('jwt_id', $jwtId)
-                    ->where('user_id', $user->id)
+                    ->where('user_id', $user->id_utilisateur)
                     ->update(['is_trusted' => true]);
 
                 return $this->responseSuccess(null, "Appareil marqué comme fiable");
@@ -135,7 +135,7 @@ class AuthController extends Controller
             $alertId = $request->alert_id;
 
             $alert = SecurityAlert::where('id', $alertId)
-                ->where('user_id', $user->id)
+                ->where('user_id', $user->id_utilisateur)
                 ->first();
 
             if (!$alert) {

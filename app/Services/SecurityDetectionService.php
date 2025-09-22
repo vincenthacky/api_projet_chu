@@ -15,7 +15,7 @@ class SecurityDetectionService
         $deviceFingerprint = $this->generateDeviceFingerprint($request);
 
         // Récupérer les sessions existantes de l'utilisateur
-        $existingSessions = UserSession::where('user_id', $user->id)
+        $existingSessions = UserSession::where('user_id', $user->id_utilisateur)
             ->where('expires_at', '>', now())
             ->orderBy('last_activity', 'desc')
             ->get();

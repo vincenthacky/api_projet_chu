@@ -19,7 +19,7 @@ class SecurityAlertService
         }
 
         // Vérifier s'il y a déjà une alerte non-acknowlegded récente
-        $recentAlert = SecurityAlert::where('user_id', $user->id)
+        $recentAlert = SecurityAlert::where('user_id', $user->id_utilisateur)
             ->where('alert_type', $analysisResult['is_suspicious'] ? 
                 SecurityAlert::TYPE_SUSPICIOUS_LOGIN : 
                 SecurityAlert::TYPE_NEW_DEVICE)
@@ -34,7 +34,7 @@ class SecurityAlertService
 
         // Pour les nouvelles devices, envoyer seulement si c'est la première fois
         if ($analysisResult['is_new_device'] && !$analysisResult['is_suspicious']) {
-            $existingNewDeviceAlerts = SecurityAlert::where('user_id', $user->id)
+            $existingNewDeviceAlerts = SecurityAlert::where('user_id', $user->id_utilisateur)
                 ->where('alert_type', SecurityAlert::TYPE_NEW_DEVICE)
                 ->where('created_at', '>', now()->subDays(7))
                 ->count();
@@ -55,7 +55,7 @@ class SecurityAlertService
             SecurityAlert::TYPE_NEW_DEVICE;
 
         $alert = SecurityAlert::create([
-            'user_id' => $user->id,
+            'user_id' => $user->id_utilisateur,
             'alert_type' => $alertType,
             'alert_data' => [
                 'ip_address' => $sessionData['ip'],
