@@ -59,6 +59,6 @@ class StatutReclamation extends Model
     // Une statut peut avoir plusieurs réclamations
     public function reclamations()
     {
-        return $this->hasMany(Reclamation::class, 'id_statut_reclamation', 'id_statut_reclamation');
+        return $this->hasMany(Reclamation::class, 'id_statut_reclamation', 'id_statut_reclamation')->orderBy('created_at', 'desc');
     }
 }

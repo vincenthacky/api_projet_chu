@@ -133,7 +133,7 @@ class Souscription extends Model
 
     public function planpaiements()
     {
-        return $this->hasMany(PlanPaiement::class, 'id_souscription', 'id_souscription');
+        return $this->hasMany(PlanPaiement::class, 'id_souscription', 'id_souscription')->orderBy('created_at', 'desc');
     }
 
 }

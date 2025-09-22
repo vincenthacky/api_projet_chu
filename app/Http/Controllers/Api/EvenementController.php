@@ -434,25 +434,6 @@ class EvenementController extends Controller
     }
 
     
-    /**
-     * Récupérer un événement spécifique par ID
-     */
-    // public function show($id)
-    // {
-    //     try {
-    //         $evenement = Evenement::with(['documents', 'typeEvenement'])
-    //             ->findOrFail($id);
-
-    //         $evenement->documents_lies = $evenement->documents->groupBy('type_fichier');
-    //         unset($evenement->documents);
-    //         $evenement->mois_annee = Carbon::parse($evenement->date_debut_evenement)->format('F Y');
-
-    //         return $this->responseSuccess($evenement, "Événement récupéré avec succès");
-
-    //     } catch (Exception $e) {
-    //         return $this->responseError("Événement introuvable ou erreur : " . $e->getMessage(), 404);
-    //     }
-    // }
 
     /**
      * Créer un nouvel événement

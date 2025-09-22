@@ -71,14 +71,14 @@ class Evenement extends Model
 
     public function souscription()
     {
-        return $this->belongsTo(Souscription::class, 'id_souscription', 'id_souscription');
+        return $this->belongsTo(Souscription::class, 'id_souscription', 'id_souscription')->orderBy('created_at', 'desc');
     }
 
     // Relation vers tous les documents liés à cet événement
     public function documents()
     {
         return $this->hasMany(Document::class, 'id_source', 'id_evenement')
-                    ->where('source_table', 'evenements');
+                    ->where('source_table', 'evenements')->orderBy('created_at', 'desc');
     }
 
     /**

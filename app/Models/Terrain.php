@@ -80,7 +80,7 @@ class Terrain extends Model
     // Un terrain peut être lié à plusieurs souscriptions
     public function souscriptions()
     {
-        return $this->hasMany(Souscription::class, 'id_terrain', 'id_terrain');
+        return $this->hasMany(Souscription::class, 'id_terrain', 'id_terrain')->orderBy('created_at', 'desc');
     }
 
     /**

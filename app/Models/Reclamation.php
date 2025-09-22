@@ -101,7 +101,7 @@ class Reclamation extends Model
     // Récupérer la souscription liée
     public function souscription()
     {
-        return $this->belongsTo(Souscription::class, 'id_souscription', 'id_souscription');
+        return $this->belongsTo(Souscription::class, 'id_souscription', 'id_souscription')->orderBy('created_at', 'desc');
     }
 
     // Récupérer le statut de la réclamation

@@ -41,7 +41,7 @@ class SouscriptionController extends Controller
                 });
             }
 
-            $souscriptions = $query->orderBy('created_at', 'asc')
+            $souscriptions = $query->orderBy('created_at', 'desc')
                                 ->paginate($perPage);
 
             // 🔥 Enrichir chaque souscription
@@ -131,7 +131,7 @@ class SouscriptionController extends Controller
                 });
             }
 
-            $souscriptions = $query->orderBy('created_at', 'asc')
+            $souscriptions = $query->orderBy('created_at', 'desc')
                                 ->paginate($perPage);
 
             // 🔥 Enrichir chaque souscription

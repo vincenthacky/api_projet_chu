@@ -52,7 +52,7 @@ class Recompense extends Model
     // Lien vers la souscription
     public function souscription()
     {
-        return $this->belongsTo(Souscription::class, 'id_souscription', 'id_souscription');
+        return $this->belongsTo(Souscription::class, 'id_souscription', 'id_souscription')->orderBy('created_at', 'desc');
     }
 
     // Lien vers le type de récompense
