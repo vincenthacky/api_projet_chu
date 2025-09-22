@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Services\DocumentService;
+use Illuminate\Validation\Rule;
 use Exception;
 
 class UtilisateurController extends Controller
@@ -127,7 +128,7 @@ class UtilisateurController extends Controller
     {
         DB::beginTransaction();
         try {
-             $validator = Validator::make($request->all(), [
+            $validator = Validator::make($request->all(), [
             'nom'          => 'required|string|max:100',
             'prenom'       => 'required|string|max:100',
             'email'        => 'nullable|string|email|max:150|unique:Utilisateur,email',
@@ -135,13 +136,18 @@ class UtilisateurController extends Controller
             'mot_de_passe' => 'required|string|min:6',
             'poste'        => 'nullable|string|max:100',
             'service'      => 'nullable|string|max:100',
-            'type'         => 'nullable|string|max:40',
+            'type'         => [
+                'required',
+                'string',
+                'max:40',
+                Rule::in(Utilisateur::TYPES_UTILISATEUR), // ✅ validation directe
+            ],
 
             // 📂 Validation des fichiers
-            'cni'                  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
-            'carte_professionnel'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'cni'                  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'carte_professionnel'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'fiche_souscription'   => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10240',
-            'photo_profil'         => 'nullable|image|mimes:jpg,jpeg,png|max:10240', // 5Mo image
+            'photo_profil'         => 'nullable|image|mimes:jpg,jpeg,png|max:5120', // 5Mo image
         ]);
 
         if ($validator->fails()) {
@@ -150,6 +156,8 @@ class UtilisateurController extends Controller
                 'errors' => $validator->errors()
             ], 422);
         }
+
+        $est_administrateur = $request->type !== Utilisateur::TYPE_USER ? 1 : 0;
 
         // ✅ Création utilisateur
         $user = Utilisateur::create([
@@ -163,6 +171,7 @@ class UtilisateurController extends Controller
             'mot_de_passe'       => bcrypt($request->mot_de_passe),
             'date_inscription'   => now(),
             'statut_utilisateur' => Utilisateur::STATUT_ACTIF,
+            'est_administrateur' => $est_administrateur,
         ]);
 
         // ✅ Upload des documents si présents
@@ -197,13 +206,11 @@ class UtilisateurController extends Controller
         }
     }
 
+
     /**
      * Mettre à jour un utilisateur.
      */
-    /**
-     * Mettre à jour un utilisateur.
-     */
-    public function update(Request $request, DocumentService $documentService, $id)
+     public function update(Request $request, DocumentService $documentService, $id)
     {
         DB::beginTransaction();
         try {
@@ -218,7 +225,21 @@ class UtilisateurController extends Controller
                 'mot_de_passe' => 'nullable|string|min:6',
                 'poste'        => 'nullable|string|max:100',
                 'service'      => 'nullable|string|max:100',
-                'type'         => 'nullable|string|max:40',
+                'type'         => [
+                    'sometimes',
+                    'string',
+                    'max:40',
+                    Rule::in(Utilisateur::TYPES_UTILISATEUR),
+                ],
+                'statut_utilisateur' => [
+                    'sometimes',
+                    'string',
+                    Rule::in([
+                        Utilisateur::STATUT_ACTIF,
+                        Utilisateur::STATUT_SUSPENDU,
+                        Utilisateur::STATUT_INACTIF,
+                    ]),
+                ],
 
                 // 📂 Validation des fichiers
                 'cni'                  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
@@ -234,20 +255,22 @@ class UtilisateurController extends Controller
                 ], 422);
             }
 
-    
-
+            // ✅ Si "type" a été envoyé → mettre à jour est_administrateur
+            if ($request->filled('type')) {
+                $user->est_administrateur = $request->type !== Utilisateur::TYPE_USER ? 1 : 0;
+            }
 
             // ✅ Mise à jour des infos utilisateur
             $user->update([
-                'nom'        => $request->nom ?? $user->nom,
-                'prenom'     => $request->prenom ?? $user->prenom,
-                'email'      => $request->email ?? $user->email,
-                'telephone'  => $request->telephone ?? $user->telephone,
-                'poste'      => $request->poste ?? $user->poste,
-                'service'    => $request->service ?? $user->service,
-                'type'       => $request->type ?? $user->type,
-                // 🔐 mot de passe mis à jour seulement si présent
-                'mot_de_passe' => $request->filled('mot_de_passe')
+                'nom'         => $request->nom ?? $user->nom,
+                'prenom'      => $request->prenom ?? $user->prenom,
+                'email'       => $request->email ?? $user->email,
+                'telephone'   => $request->telephone ?? $user->telephone,
+                'poste'       => $request->poste ?? $user->poste,
+                'service'     => $request->service ?? $user->service,
+                'type'        => $request->type ?? $user->type,
+                'statut_utilisateur'=> $request->statut_utilisateur ?? $user->statut_utilisateur,
+                'mot_de_passe'=> $request->filled('mot_de_passe')
                                     ? bcrypt($request->mot_de_passe)
                                     : $user->mot_de_passe,
             ]);

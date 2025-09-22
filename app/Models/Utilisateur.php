@@ -108,6 +108,26 @@ class Utilisateur extends Authenticatable implements JWTSubject
     public const STATUT_SUSPENDU  = 'suspendu';
     public const STATUT_INACTIF   = 'inactif';
 
+
+    /**
+     * ✅ Constantes de type utilisateur
+     */
+    public const TYPE_USER        = 'user';
+    public const TYPE_ADMIN       = 'admin';
+    public const TYPE_SUPER_ADMIN = 'superAdmin';
+
+
+    public const TYPES_UTILISATEUR = [
+    self::TYPE_USER,
+    self::TYPE_ADMIN,
+    self::TYPE_SUPER_ADMIN,
+];
+
+
+
+
+
+
     /**
      * Relations
      */

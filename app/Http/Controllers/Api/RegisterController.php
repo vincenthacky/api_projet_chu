@@ -8,6 +8,8 @@ use App\Services\DocumentService;
 use App\Models\Utilisateur;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Validation\Rule;
+
 
 
 class RegisterController extends Controller
@@ -28,7 +30,12 @@ class RegisterController extends Controller
             'mot_de_passe' => 'required|string|min:6',
             'poste'        => 'nullable|string|max:100',
             'service'      => 'nullable|string|max:100',
-            'type'         => 'nullable|string|max:40',
+            'type'         => [
+                'required',
+                'string',
+                'max:40',
+                Rule::in(Utilisateur::TYPES_UTILISATEUR), // ✅ validation directe
+            ],
 
             // 📂 Validation des fichiers
             'cni'                  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
@@ -44,6 +51,8 @@ class RegisterController extends Controller
             ], 422);
         }
 
+        $est_administrateur = $request->type !== Utilisateur::TYPE_USER ? 1 : 0;
+
         // ✅ Création utilisateur
         $user = Utilisateur::create([
             'nom'                => $request->nom,
@@ -56,6 +65,7 @@ class RegisterController extends Controller
             'mot_de_passe'       => bcrypt($request->mot_de_passe),
             'date_inscription'   => now(),
             'statut_utilisateur' => Utilisateur::STATUT_ACTIF,
+            'est_administrateur' => $est_administrateur,
         ]);
 
         // ✅ Upload des documents si présents
