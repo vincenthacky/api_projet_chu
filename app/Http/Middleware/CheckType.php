@@ -32,7 +32,7 @@ class CheckType
 
          // ✅ Vérifie si l’utilisateur est actif
         if ($user->statut_utilisateur !== \App\Models\Utilisateur::STATUT_ACTIF) {
-            return $this->responseError("Compte inactif ou suspendu", 403);
+            return $this->responseError("Votre compte est inactif ou suspendu. Veuillez contacter l’administrateur.", 403);
         }
 
         // ✅ Vérifie si le type correspond
