@@ -1,27 +1,50 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+// ==================== MODÈLE UserSession (Migration) ====================
+/*
+Schema::create('user_sessions', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('user_id')->constrained('utilisateurs');
+    $table->string('jwt_id')->unique();
+    $table->ipAddress('ip_address');
+    $table->text('user_agent');
+    $table->string('device_fingerprint')->nullable();
+    $table->string('country')->nullable();
+    $table->string('city')->nullable();
+    $table->boolean('is_trusted')->default(false);
+    $table->timestamp('last_activity');
+    $table->timestamp('expires_at');
+    $table->timestamps();
+    
+    $table->index(['user_id', 'is_trusted']);
+    $table->index(['user_id', 'last_activity']);
+});
+
+Schema::create('security_alerts', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('user_id')->constrained('utilisateurs');
+    $table->string('alert_type'); // 'suspicious_login', 'new_device'
+    $table->json('alert_data');
+    $table->boolean('is_acknowledged')->default(false);
+    $table->timestamp('acknowledged_at')->nullable();
+    $table->timestamps();
+    
+    $table->index(['user_id', 'alert_type', 'is_acknowledged']);
+});
+*/
+
+// ==================== MODÈLE UserSession ====================
 
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Utilisateur;
-use Illuminate\Support\Facades\Hash;
-use Tymon\JWTAuth\Facades\JWTAuth;
-use Tymon\JWTAuth\Exceptions\JWTException;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
-use App\Models\UserSession;
-use App\Models\SecurityAlert;
-use App\Services\SecurityDetectionService;
-use App\Services\SecurityAlertService;
+// ==================== SERVICE DE DÉTECTION DE SÉCURITÉ ====================
+
+// ==================== SERVICE DE GESTION DES ALERTES ====================
 
 
+// ==================== CONTRÔLEUR PRINCIPAL ====================
 class AuthController extends Controller
 {
-    //
-
-     protected $securityDetection;
+    protected $securityDetection;
     protected $alertService;
 
     public function __construct(SecurityDetectionService $securityDetection, SecurityAlertService $alertService)
@@ -69,9 +92,9 @@ class AuthController extends Controller
                 'device_fingerprint' => hash('sha256', $request->header('User-Agent')),
                 'country' => $securityAnalysis['location_info']['country'],
                 'city' => $securityAnalysis['location_info']['city'],
-                'is_trusted' => !$securityAnalysis['is_suspicious'], 
+                'is_trusted' => !$securityAnalysis['is_suspicious'], // Faire confiance si pas suspect
                 'last_activity' => now(),
-                'expires_at' => now()->addDays(7), 
+                'expires_at' => now()->addDays(7), // Token JWT expire après 7 jours
             ];
 
             // Créer la session
@@ -81,8 +104,7 @@ class AuthController extends Controller
             if ($this->alertService->shouldSendAlert($user, $securityAnalysis)) {
                 $this->alertService->createAndSendAlert($user, $securityAnalysis, [
                     'ip' => $request->ip(),
-                    'user_agent' => $request->header('User-Agent'),
-                    'token' => $token
+                    'user_agent' => $request->header('User-Agent')
                 ]);
             }
 
@@ -97,7 +119,11 @@ class AuthController extends Controller
             $data = [
                 'user' => $user,
                 'token' => $token,
-                
+                'session_info' => [
+                    'is_new_device' => $securityAnalysis['is_new_device'],
+                    'risk_level' => $securityAnalysis['risk_level'],
+                    'trusted' => $userSession->is_trusted
+                ]
             ];
 
             return $this->responseSuccess($data, "Connexion réussie");
@@ -159,73 +185,5 @@ class AuthController extends Controller
             ->where('expires_at', '<', now())
             ->delete();
     }
-
-
-    public function updatePassword(Request $request)
-    {
-        try {
-            $request->validate([
-                'ancien_mot_de_passe' => 'required|string',
-                'nouveau_mot_de_passe' => 'required|string|min:6|confirmed', 
-                // ⚠️ nécessite que le front envoie aussi "nouveau_mot_de_passe_confirmation"
-            ]);
-
-            $user = JWTAuth::parseToken()->authenticate();
-
-            if (!$user) {
-                return $this->responseError("Utilisateur non authentifié", 401);
-            }
-
-            if (!Hash::check($request->ancien_mot_de_passe, $user->mot_de_passe)) {
-                return $this->responseError("L’ancien mot de passe est incorrect", 400);
-            }
-
-            // Vérification que les deux nouveaux mots de passe correspondent
-            if ($request->nouveau_mot_de_passe !== $request->nouveau_mot_de_passe_confirmation) {
-                return $this->responseError("Les deux nouveaux mots de passe ne correspondent pas", 400);
-            }
-
-            $user->mot_de_passe = Hash::make($request->nouveau_mot_de_passe);
-            $user->save();
-
-            return $this->responseSuccessMessage( "Mot de passe modifié avec succès. Veuillez utiliser le nouveau mot de passe pour vos prochaines connexions.");
-        } catch (\Exception $e) {
-            return $this->responseError("Erreur lors de la modification du mot de passe : " . $e->getMessage(), 500);
-        }
-    }
-
-
-
-
-
-    /**
-     * 🚪 Déconnexion (logout)
-     */
-    public function logout()
-    {
-        try {
-            JWTAuth::invalidate(JWTAuth::getToken());
-            return $this->responseSuccessMessage("Déconnexion effectuée avec succès");
-        } catch (JWTException $e) {
-            return $this->responseError("Erreur lors de la déconnexion", 500);
-        }
-    }
-
-    /**
-     * 👤 Récupérer l’utilisateur connecté
-     */
-   public function me()
-{
-    try {
-        $user = JWTAuth::parseToken()->authenticate();
-        $user->load(['cni', 'carteProfessionnelle', 'ficheSouscription', 'photoProfil']);
-        return $this->responseSuccess($user, "Utilisateur connecté");
-    } catch (\Exception $e) {
-        return $this->responseError("Impossible de récupérer l'utilisateur connecté : " . $e->getMessage(), 401);
-    }
 }
 
-
-
-    
-}
