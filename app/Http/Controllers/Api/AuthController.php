@@ -62,7 +62,7 @@ class AuthController extends Controller
 
             // Données de session
             $sessionData = [
-                'user_id' => $user->id_utiilisateur,
+                'user_id' => $user->id_utilisateur,
                 'jwt_id' => $jwtId,
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->header('User-Agent'),
