@@ -174,11 +174,14 @@
 
             <div style="text-align: center; margin: 30px 0;">
                 <h3>Si c'était vous :</h3>
-                <p>Aucune action nécessaire. Vous pouvez ignorer cet email.</p>
+                <a href="{{ $trustUrl }}?token={{ $alertData['token'] ?? '' }}" class="button btn-primary">
+                    ✅ Oui, c'était moi - Marquer cet appareil comme fiable
+                </a>
                 
                 <h3 style="margin-top: 30px;">Si ce n'était PAS vous :</h3>
-                <p>Changer votre mot de passe immédiatement.</p>
-              
+                <a href="{{ $changePasswordUrl }}" class="button btn-danger">
+                    🔒 Changer mon mot de passe immédiatement
+                </a>
             </div>
 
             <div class="security-tips">
@@ -194,7 +197,7 @@
 
             @if($alertType === 'suspicious_login')
             <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                <h4 style="color: #721c24; margin-top: 0;">Mesures recommandées :</h4>
+                <h4 style="color: #721c24; margin-top: 0;">🚨 Mesures recommandées :</h4>
                 <ol style="color: #721c24;">
                     <li>Changez immédiatement votre mot de passe</li>
                     <li>Vérifiez si d'autres comptes utilisent le même mot de passe</li>
