@@ -62,6 +62,7 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::apiResource('type-recompenses', TypeRecompenseController::class);
     
     Route::apiResource('reclamations', ReclamationController::class);
+    Route::post('dossier-souscripteur', [DocumentController::class, 'storeDossierUtilisateur']);
     Route::apiResource('documents', DocumentController::class);
     Route::apiResource('terrains', TerrainController::class);
     Route::apiResource('statutreclamation', StatutReclamationController::class);

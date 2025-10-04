@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\DocumentService;
 use App\Models\Document;
+use App\Models\Utilisateur;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -138,6 +139,44 @@ class DocumentController extends Controller
             return $this->responseError("Erreur lors de l'enregistrement : " . $e->getMessage());
         }
     }
+
+    /**
+     * Créer un nouveau document lié à un utilisateur et une souscription
+     */
+    public function storeDossierUtilisateur(Request $request)
+    {
+        $validated = $request->validate([
+            'id_utilisateur'         => 'required|exists:Utilisateur,id_utilisateur',
+            'id_souscription'        => 'required|exists:Souscription,id_souscription',
+            'libelle_type_document'  => 'required|string|max:100',
+            'document'                => 'required|file',
+        ]);
+
+        try {
+            $user = Utilisateur::findOrFail($validated['id_utilisateur']);
+            $libelle = $validated['libelle_type_document'];
+
+            $options = [
+                'id_utilisateur'       => $user->id_utilisateur,
+                'source_table'         => 'utilisateurs',
+                'source_id'            => $user->id_utilisateur,
+                'description_document' => "Document {$libelle} de l'utilisateur {$user->nom} {$user->prenom}",
+            ];
+
+            $document = $this->documentService->store(
+                idSouscription: $validated['id_souscription'],
+                libelleTypeDocument: $libelle,
+                options: $options,
+                fichier: $request->file('document')
+            );
+
+            return $this->responseSuccessMessage("Document enregistré avec succès", 200);
+
+        } catch (\Exception $e) {
+            return $this->responseError("Erreur lors de l'enregistrement : " . $e->getMessage(),500);
+        }
+    }
+
 
 
     /**
