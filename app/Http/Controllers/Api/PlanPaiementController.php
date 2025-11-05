@@ -68,6 +68,10 @@ class PlanPaiementController extends Controller
     /**
      * Récupère tous les paiements avec pagination et recherche avancée.
      */
+      
+    /**
+     * Récupère tous les paiements avec pagination et recherche avancée.
+     */
     public function indexUtilisateur(Request $request)
     {
         try {
@@ -89,17 +93,17 @@ class PlanPaiementController extends Controller
                 });
             }
 
+             // 📊 Calcul des statistiques AVANT la pagination
+            $totals = [
+                'total_mensualites' => (clone $query)->count(),
+                'total_paye_a_temps' => (clone $query)->where('statut_versement', PlanPaiement::STATUT_PAYE_A_TEMPS)->count(),
+                'total_en_retard' => (clone $query)->where('statut_versement', PlanPaiement::STATUT_PAYE_EN_RETARD)->count(),
+                'total_en_attente' => (clone $query)->where('statut_versement', PlanPaiement::STATUT_EN_ATTENTE)->count(),
+            ];
+
             $paiements = $query->orderBy('date_limite_versement', 'desc')
                                ->paginate($perPage);
 
-
-            // Calcul des statistiques
-            $totals = [
-                'total_mensualites' => PlanPaiement::count(),
-                'total_paye_a_temps' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_PAYE_A_TEMPS)->count(),
-                'total_en_retard' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_PAYE_EN_RETARD)->count(),
-                'total_en_attente' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_EN_ATTENTE)->count(),
-            ];
 
             return response()->json([
             'success' => true,
@@ -122,6 +126,8 @@ class PlanPaiementController extends Controller
             return $this->responseError("Erreur lors de la récupération des paiements : " . $e->getMessage(), 500);
         }
     }
+
+
 
 
     /**
