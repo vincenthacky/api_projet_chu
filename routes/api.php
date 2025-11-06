@@ -48,11 +48,10 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::get('paiements/utilisateur', [PlanPaiementController::class, 'indexUtilisateur']);
     Route::get('documents/utilisateur', [DocumentController::class, 'indexUtilisateur']);
     Route::get('terrains/utilisateur', [TerrainController::class, 'indexUtilisateur']);
+    Route::get('paiement-groupes', [PlanPaiementController::class, 'groupByUser']);
+    
 
-    // web.php ou api.php
-   Route::post('utilisateurs/{id}/update', [UtilisateurController::class, 'update']);
-
-
+    Route::post('utilisateurs/{id}/update', [UtilisateurController::class, 'update']);
 
     Route::apiResource('souscriptions', SouscriptionController::class);
     Route::apiResource('utilisateurs', UtilisateurController::class);
@@ -70,32 +69,15 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::get('me', [AuthController::class, 'me']);
     Route::post('register', [RegisterController::class, 'register']);
 
-
-
     // Routes Dashboard/Statistiques - Groupées sous le préfixe /dashboard
     Route::prefix('dashboard')->group(function () {
-        // API 1: Statistiques générales (stats object)
         Route::get('/stats', [StatistiqueController::class, 'getStats']);
-        
-        // API 2: Données graphique paiements (doughnut chart)
         Route::get('/paiements-chart', [StatistiqueController::class, 'getPaiementsChart']);
-        
-        // API 3: Données graphique souscriptions (bar chart)
         Route::get('/souscriptions-chart', [StatistiqueController::class, 'getSouscriptionsChart']);
-        
-        // API 4: Données graphique événements (line chart)
         Route::get('/evenements-chart', [StatistiqueController::class, 'getEvenementsChart']);
-        
-        // API 5: Données graphique réclamations (pie chart)
         Route::get('/reclamations-chart', [StatistiqueController::class, 'getReclamationsChart']);
-        
-        // API 6: Activités récentes (recentActivities array)
         Route::get('/recent-activities', [StatistiqueController::class, 'getRecentActivities']);
-        
-        // API 7: Alertes importantes (alertes array)
         Route::get('/alertes', [StatistiqueController::class, 'getAlertes']);
-        
-        // API 8: Données complètes du dashboard (une seule requête)
         Route::get('/complete', [StatistiqueController::class, 'getDashboardComplete']);
     });
 });

@@ -209,4 +209,17 @@ class Utilisateur extends Authenticatable implements JWTSubject
             ->latest('created_at');
     }
 
+    public function paiements()
+    {
+        return $this->hasManyThrough(
+            PlanPaiement::class,
+            Souscription::class,
+            'id_utilisateur',   // clé étrangère sur Souscription
+            'id_souscription',  // clé étrangère sur PlanPaiement
+            'id_utilisateur',   // clé locale sur Utilisateur
+            'id_souscription'   // clé locale sur Souscription
+        );
+    }
+
+
 }
