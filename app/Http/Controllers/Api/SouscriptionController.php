@@ -101,6 +101,105 @@ class SouscriptionController extends Controller
     }
 
 
+    public function groupeByUser(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 5);
+            $search  = $request->input('search');
+
+            // Récupérer les utilisateurs avec leurs souscriptions actives
+            $query = Utilisateur::with(['souscriptions' => function($q) {
+                    $q->with(['terrain', 'admin', 'planpaiements'])
+                    ->where('statut_souscription', '=', Souscription::STATUT_ACTIVE)
+                    ->orderBy('created_at', 'desc');
+                }])
+                ->whereHas('souscriptions', function($q) {
+                    $q->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
+                });
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nom', 'like', "%{$search}%")
+                    ->orWhere('prenom', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('matricule', 'like', "%{$search}%")
+                    ->orWhereHas('souscriptions', function($q2) use ($search) {
+                        $q2->where('id_souscription', 'like', "%{$search}%")
+                            ->orWhereHas('terrain', function ($q3) use ($search) {
+                                $q3->where('libelle', 'like', "%{$search}%")
+                                    ->orWhere('localisation', 'like', "%{$search}%");
+                            });
+                    });
+                });
+            }
+
+            $utilisateurs = $query->orderBy('created_at', 'desc')
+                                ->paginate($perPage);
+
+            // 🔥 Enrichir chaque souscription de chaque utilisateur
+            $utilisateurs->getCollection()->transform(function ($utilisateur) {
+                
+                $utilisateur->cotisations = $utilisateur->souscriptions->map(function ($souscription) {
+                    // Prix total du terrain
+                    $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
+
+                    // Montant payé
+                    $montantPaye = $souscription->planpaiements()
+                                                ->whereNotNull('date_paiement_effectif')
+                                                ->sum('montant_paye');
+
+                    // Reste à payer
+                    $reste = $prixTotal - $montantPaye;
+
+                    // ✅ Détermination du statut dynamique
+                    if ($montantPaye == 0) {
+                        $statut = Souscription::STATUT_EN_ATTENTE;
+                    } elseif ($reste <= 0) {
+                        $statut = Souscription::STATUT_TERMINEE;
+                    } else {
+                        $statut = Souscription::STATUT_EN_COUR;
+                    }
+
+                    // ✅ Détermination de la date du prochain paiement
+                    $dernierPaiement = $souscription->planpaiements()
+                                                    ->whereNotNull('date_paiement_effectif')
+                                                    ->orderBy('date_paiement_effectif', 'desc')
+                                                    ->first();
+
+                    if ($dernierPaiement) {
+                        $dateProchain = Carbon::parse($dernierPaiement->date_paiement_effectif)
+                                                ->addMonthNoOverflow()
+                                                ->format('Y-m-d');
+                    } else {
+                        $dateProchain = Carbon::parse($souscription->date_debut_paiement ?? $souscription->date_souscription)
+                                                ->addMonthNoOverflow()
+                                                ->format('Y-m-d');
+                    }
+
+                    // Injecter dans l'objet retourné
+                    $souscription->prix_total_terrain = $prixTotal;
+                    $souscription->montant_paye = $montantPaye;
+                    $souscription->reste_a_payer = max($reste, 0);
+                    $souscription->date_prochain = $dateProchain;
+                    $souscription->statut_dynamique = $statut;
+
+                    return $souscription;
+                });
+
+                // Supprimer la clé 'souscriptions' pour n'avoir que 'cotisations'
+                unset($utilisateur->souscriptions);
+
+                return $utilisateur;
+            });
+
+            return $this->responseSuccessPaginate($utilisateurs, "Liste des utilisateurs avec leurs cotisations");
+
+        } catch (\Exception $e) {
+            return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
+        }
+    }
+
+
 
 
     /**

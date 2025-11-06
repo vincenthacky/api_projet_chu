@@ -43,6 +43,8 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::get('/utilisateurs-souscriptions', [UtilisateurController::class, 'indexWithSouscriptions']);
 
     Route::get('souscriptions/utilisateur', [SouscriptionController::class, 'indexUtilisateur']);
+    Route::get('souscriptions/groupe-utilisateur', [SouscriptionController::class, 'groupeByUser']);
+    
     Route::get('reclamations/utilisateur', [ReclamationController::class, 'indexUtilisateur']);
     Route::get('recompenses/utilisateur', [RecompenseController::class, 'indexUtilisateur']);
     Route::get('paiements/utilisateur', [PlanPaiementController::class, 'indexUtilisateur']);
