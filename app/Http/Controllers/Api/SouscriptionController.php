@@ -99,106 +99,168 @@ class SouscriptionController extends Controller
             return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
         }
     }
-
-
+    
+    
+    
     public function groupeByUser(Request $request)
-    {
-        try {
-            $perPage = $request->input('per_page', 5);
-            $search  = $request->input('search');
+{
+    try {
+        $perPage = $request->input('per_page', 15);
+        $search  = $request->input('search');
 
-            // Récupérer les utilisateurs avec leurs souscriptions actives
-            $query = Utilisateur::with(['souscriptions' => function($q) {
-                    $q->with(['terrain', 'admin', 'planpaiements'])
-                    ->where('statut_souscription', '=', Souscription::STATUT_ACTIVE)
-                    ->orderBy('created_at', 'desc');
-                }])
-                ->whereHas('souscriptions', function($q) {
-                    $q->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
-                });
-
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('nom', 'like', "%{$search}%")
-                    ->orWhere('prenom', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('matricule', 'like', "%{$search}%")
-                    ->orWhereHas('souscriptions', function($q2) use ($search) {
-                        $q2->where('id_souscription', 'like', "%{$search}%")
-                            ->orWhereHas('terrain', function ($q3) use ($search) {
-                                $q3->where('libelle', 'like', "%{$search}%")
-                                    ->orWhere('localisation', 'like', "%{$search}%");
-                            });
-                    });
-                });
-            }
-
-            $utilisateurs = $query->orderBy('created_at', 'desc')
-                                ->paginate($perPage);
-
-            // 🔥 Enrichir chaque souscription de chaque utilisateur
-            $utilisateurs->getCollection()->transform(function ($utilisateur) {
-                
-                $utilisateur->cotisations = $utilisateur->souscriptions->map(function ($souscription) {
-                    // Prix total du terrain
-                    $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
-
-                    // Montant payé
-                    $montantPaye = $souscription->planpaiements()
-                                                ->whereNotNull('date_paiement_effectif')
-                                                ->sum('montant_paye');
-
-                    // Reste à payer
-                    $reste = $prixTotal - $montantPaye;
-
-                    // ✅ Détermination du statut dynamique
-                    if ($montantPaye == 0) {
-                        $statut = Souscription::STATUT_EN_ATTENTE;
-                    } elseif ($reste <= 0) {
-                        $statut = Souscription::STATUT_TERMINEE;
-                    } else {
-                        $statut = Souscription::STATUT_EN_COUR;
-                    }
-
-                    // ✅ Détermination de la date du prochain paiement
-                    $dernierPaiement = $souscription->planpaiements()
-                                                    ->whereNotNull('date_paiement_effectif')
-                                                    ->orderBy('date_paiement_effectif', 'desc')
-                                                    ->first();
-
-                    if ($dernierPaiement) {
-                        $dateProchain = Carbon::parse($dernierPaiement->date_paiement_effectif)
-                                                ->addMonthNoOverflow()
-                                                ->format('Y-m-d');
-                    } else {
-                        $dateProchain = Carbon::parse($souscription->date_debut_paiement ?? $souscription->date_souscription)
-                                                ->addMonthNoOverflow()
-                                                ->format('Y-m-d');
-                    }
-
-                    // Injecter dans l'objet retourné
-                    $souscription->prix_total_terrain = $prixTotal;
-                    $souscription->montant_paye = $montantPaye;
-                    $souscription->reste_a_payer = max($reste, 0);
-                    $souscription->date_prochain = $dateProchain;
-                    $souscription->statut_dynamique = $statut;
-
-                    return $souscription;
-                });
-
-                // Supprimer la clé 'souscriptions' pour n'avoir que 'cotisations'
-                unset($utilisateur->souscriptions);
-
-                return $utilisateur;
+        // Récupérer les utilisateurs avec leurs souscriptions actives
+        $query = Utilisateur::with(['souscriptions' => function($q) {
+                $q->with(['terrain', 'admin', 'planpaiements'])
+                  ->where('statut_souscription', '=', Souscription::STATUT_ACTIVE)
+                  ->orderBy('created_at', 'desc');
+            }])
+            ->whereHas('souscriptions', function($q) {
+                $q->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
             });
 
-            return $this->responseSuccessPaginate($utilisateurs, "Liste des utilisateurs avec leurs cotisations");
-
-        } catch (\Exception $e) {
-            return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nom', 'like', "%{$search}%")
+                  ->orWhere('prenom', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('matricule', 'like', "%{$search}%")
+                  ->orWhereHas('souscriptions', function($q2) use ($search) {
+                      $q2->where('id_souscription', 'like', "%{$search}%")
+                         ->orWhereHas('terrain', function ($q3) use ($search) {
+                             $q3->where('libelle', 'like', "%{$search}%")
+                                ->orWhere('localisation', 'like', "%{$search}%");
+                         });
+                  });
+            });
         }
-    }
 
+        // 📊 Calculer les statistiques globales AVANT la pagination (sur tous les utilisateurs)
+        $tousLesUtilisateurs = clone $query;
+        $tousLesUtilisateurs = $tousLesUtilisateurs->with(['souscriptions' => function($q) {
+            $q->with(['terrain', 'planpaiements'])
+              ->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
+        }])->get();
+
+        $statsGlobales = [
+            'nbr_total_utilisateurs' => $tousLesUtilisateurs->count(),
+            'nbr_total_souscriptions' => 0,
+            'montant_total' => 0,
+            'total_deja_paye' => 0,
+            'total_reste_a_payer' => 0,
+        ];
+
+        foreach ($tousLesUtilisateurs as $user) {
+            foreach ($user->souscriptions as $souscription) {
+                $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
+                $montantPaye = $souscription->planpaiements()
+                                            ->whereNotNull('date_paiement_effectif')
+                                            ->sum('montant_paye');
+                $reste = $prixTotal - $montantPaye;
+
+                $statsGlobales['nbr_total_souscriptions']++;
+                $statsGlobales['montant_total'] += $prixTotal;
+                $statsGlobales['total_deja_paye'] += $montantPaye;
+                $statsGlobales['total_reste_a_payer'] += max($reste, 0);
+            }
+        }
+
+        // Paginer les résultats
+        $utilisateurs = $query->orderBy('created_at', 'desc')
+                              ->paginate($perPage);
+
+        // 🔥 Enrichir chaque souscription de chaque utilisateur (uniquement pour la page en cours)
+        $utilisateurs->getCollection()->transform(function ($utilisateur) {
+            
+            // Variables pour les statistiques par utilisateur
+            $totalSouscriptions = 0;
+            $montantTotal = 0;
+            $totalPaye = 0;
+            $totalResteAPayer = 0;
+
+            $utilisateur->souscriptions->transform(function ($souscription) use (&$totalSouscriptions, &$montantTotal, &$totalPaye, &$totalResteAPayer) {
+                // Prix total du terrain
+                $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
+
+                // Montant payé
+                $montantPaye = $souscription->planpaiements()
+                                            ->whereNotNull('date_paiement_effectif')
+                                            ->sum('montant_paye');
+
+                // Reste à payer
+                $reste = $prixTotal - $montantPaye;
+
+                // ✅ Détermination du statut dynamique
+                if ($montantPaye == 0) {
+                    $statut = Souscription::STATUT_EN_ATTENTE;
+                } elseif ($reste <= 0) {
+                    $statut = Souscription::STATUT_TERMINEE;
+                } else {
+                    $statut = Souscription::STATUT_EN_COUR;
+                }
+
+                // ✅ Détermination de la date du prochain paiement
+                $dernierPaiement = $souscription->planpaiements()
+                                                ->whereNotNull('date_paiement_effectif')
+                                                ->orderBy('date_paiement_effectif', 'desc')
+                                                ->first();
+
+                if ($dernierPaiement) {
+                    $dateProchain = Carbon::parse($dernierPaiement->date_paiement_effectif)
+                                            ->addMonthNoOverflow()
+                                            ->format('Y-m-d');
+                } else {
+                    $dateProchain = Carbon::parse($souscription->date_debut_paiement ?? $souscription->date_souscription)
+                                            ->addMonthNoOverflow()
+                                            ->format('Y-m-d');
+                }
+
+                // Injecter dans l'objet retourné
+                $souscription->prix_total_terrain = $prixTotal;
+                $souscription->montant_paye = $montantPaye;
+                $souscription->reste_a_payer = max($reste, 0);
+                $souscription->date_prochain = $dateProchain;
+                $souscription->statut_dynamique = $statut;
+
+                // 📊 Accumuler les statistiques par utilisateur
+                $totalSouscriptions++;
+                $montantTotal += $prixTotal;
+                $totalPaye += $montantPaye;
+                $totalResteAPayer += max($reste, 0);
+
+                return $souscription;
+            });
+
+            // 📊 Ajouter les statistiques à l'utilisateur
+            $utilisateur->statistiques = [
+                'nbr_total_souscriptions' => $totalSouscriptions,
+                'montant_total' => $montantTotal,
+                'total_deja_paye' => $totalPaye,
+                'total_reste_a_payer' => $totalResteAPayer,
+            ];
+
+            return $utilisateur;
+        });
+
+        return response()->json([
+            'success' => true,
+            'status_code' => 200,
+            'message' => "Liste des utilisateurs avec leurs souscriptions",
+            'data' => $utilisateurs->items(),
+            'pagination' => [
+                'total' => $utilisateurs->total(),
+                'per_page' => $utilisateurs->perPage(),
+                'current_page' => $utilisateurs->currentPage(),
+                'last_page' => $utilisateurs->lastPage(),
+                'from' => $utilisateurs->firstItem(),
+                'to' => $utilisateurs->lastItem(),
+            ],
+            'statistiques_globales' => $statsGlobales,
+        ]);
+
+    } catch (\Exception $e) {
+        return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
+    }
+}
 
 
 

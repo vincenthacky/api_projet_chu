@@ -65,10 +65,12 @@ class PlanPaiementController extends Controller
             return $this->responseError("Erreur lors de la récupération des paiements : " . $e->getMessage(), 500);
         }
     }
-
-
-
-    public function groupByUser(Request $request)
+    
+    
+    
+    
+    
+     public function groupByUser(Request $request)
     {
         try {
             $perPage = $request->input('per_page', 15);
@@ -128,11 +130,12 @@ class PlanPaiementController extends Controller
         }
     }
 
+    
+    
+    
+    
+    
 
-    /**
-     * Récupère tous les paiements avec pagination et recherche avancée.
-     */
-      
     /**
      * Récupère tous les paiements avec pagination et recherche avancée.
      */
@@ -190,8 +193,6 @@ class PlanPaiementController extends Controller
             return $this->responseError("Erreur lors de la récupération des paiements : " . $e->getMessage(), 500);
         }
     }
-
-
 
 
     /**
