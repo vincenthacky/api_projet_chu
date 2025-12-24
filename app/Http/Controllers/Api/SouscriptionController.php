@@ -402,7 +402,7 @@ class SouscriptionController extends Controller
                         'mois_dus' => $moisDus,
                         'montant_du' => $montantDu,
                         'retard' => [
-                            'mois_non_payes' => abs(intdiv((int)$ecart, (int)$montantMensuel)),
+                            //'mois_non_payes' => abs(intdiv((int)$ecart, (int)$montantMensuel)),
                             'montant_restant' => abs($ecart),
                         ],
                         'avance' => null,
