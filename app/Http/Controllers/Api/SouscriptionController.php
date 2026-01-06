@@ -384,57 +384,83 @@ class SouscriptionController extends Controller
                 // ==========================
                 // 🔥 AJOUT : ETAT DE PAIEMENT
                 // ==========================
+               // ==========================
+                // 🔥 ETAT DE PAIEMENT - VERSION FINALE
+                // ==========================
+
+                // 1️⃣ Calculer le nombre de mois écoulés depuis le début du paiement
                 $dateDebut = Carbon::parse($souscription->date_debut_paiement)->startOfMonth();
                 $aujourdhui = Carbon::now()->startOfMonth();
-                $moisEcoulesReels = $dateDebut->diffInMonths($aujourdhui) + 1;
-                
-                // Blocage au nombre de mensualités prévues
-                $moisDus = min($moisEcoulesReels, $souscription->nombre_mensualites);
+                $moisEcoules = $dateDebut->diffInMonths($aujourdhui) + 1;
+
+                // 2️⃣ Le nombre de mois dus = minimum entre mois écoulés et nombre total de mensualités
+                $moisDus = min($moisEcoules, $souscription->nombre_mensualites);
+
+                // 3️⃣ Montant mensuel
                 $montantMensuel = (float) $souscription->terrain->montant_mensuel;
-                $montantDu = $moisDus * $montantMensuel;
-                $ecart = $montantPaye - $montantDu;
-                
-                if ($ecart < 0) {
+
+                // 4️⃣ Montant total qui devrait être payé jusqu'à aujourd'hui
+                $montantDuJusquaMaintenant = $moisDus * $montantMensuel;
+
+                // 5️⃣ Montant réellement payé (déjà calculé plus haut)
+                // $montantPaye est déjà disponible
+
+                // 6️⃣ Nombre de mensualités réellement payées
+                $mensualitePayees = $montantMensuel > 0 ? floor($montantPaye / $montantMensuel) : 0;
+
+                // 7️⃣ Calculer l'écart EN MOIS (différence entre mensualités payées et mois dus)
+                $ecartEnMois = $mensualitePayees - $moisDus;
+
+                // 8️⃣ Calculer l'écart EN MONTANT
+                $ecartEnMontant = $montantPaye - $montantDuJusquaMaintenant;
+
+                // 9️⃣ Déterminer le statut et les détails
+                if ($ecartEnMois < 0) { 
                     // 🔴 EN RETARD
+                    $moisEnRetard = abs($ecartEnMois);
+                    $montantEnRetard = abs($ecartEnMontant);
+                    
                     $etatPaiement = [
                         'statut' => 'en_retard',
-                        'mois_ecoules' => $moisEcoulesReels,
-                        'mois_dus' => $moisDus,
-                        'montant_du' => $montantDu,
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
                         'retard' => [
-                            //'mois_non_payes' => abs(intdiv((int)$ecart, (int)$montantMensuel)),
-                            'montant_restant' => abs($ecart),
+                            'mois_en_retard' => (int)$moisEnRetard,
+                            'montant_en_retard' => $montantEnRetard,
                         ],
-                        'avance' => null,
+                        'avance' => '',
                     ];
-                } elseif ($ecart > 0) {
-                    // 🔵 EN AVANCE
+                    
+                } elseif ($ecartEnMois > 0) { 
+                    // 🟢 EN AVANCE
+                    $moisEnAvance = $ecartEnMois;
+                    $montantEnAvance = $ecartEnMontant;
+                    
                     $etatPaiement = [
                         'statut' => 'en_avance',
-                        'mois_ecoules' => $moisEcoulesReels,
-                        'mois_dus' => $moisDus,
-                        'montant_du' => $montantDu,
-                        'retard' => null,
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
                         'avance' => [
-                            'mois_avance' => intdiv((int)$ecart, (int)$montantMensuel),
-                            'montant_avance' => $ecart,
+                            'mois_en_avance' => (int)$moisEnAvance,
+                            'montant_en_avance' => $montantEnAvance,
                         ],
+                        'retard' => '',
                     ];
+                    
                 } else {
-                    // 🟢 À JOUR
+                    // 🟡 À JOUR
                     $etatPaiement = [
                         'statut' => 'a_jour',
-                        'mois_ecoules' => $moisEcoulesReels,
-                        'mois_dus' => $moisDus,
-                        'montant_du' => $montantDu,
-                        'retard' => [
-                            'mois_non_payes' => 0,
-                            'montant_restant' => 0,
-                        ],
-                        'avance' => [
-                            'mois_avance' => 0,
-                            'montant_avance' => 0,
-                        ],
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
+                        'retard' => '',
+                        'avance' => '',
                     ];
                 }
 
@@ -444,7 +470,7 @@ class SouscriptionController extends Controller
                 $souscription->reste_a_payer = max($reste, 0);
                 $souscription->date_prochain = $dateProchain;
                 $souscription->statut_dynamique = $statut;
-                $souscription->etat_paiement = $etatPaiement; // 🔥 NOUVEAU
+                $souscription->etat_paiement = $etatPaiement;
 
                 // 📊 Accumuler les statistiques par utilisateur
                 $totalSouscriptions++;
