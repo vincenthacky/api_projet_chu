@@ -578,12 +578,96 @@ class SouscriptionController extends Controller
                                         ->format('Y-m-d');
                 }
 
-                // Injecter dans l’objet retourné
+                // ==========================
+                // 🔥 AJOUT : ETAT DE PAIEMENT
+                // ==========================
+               // ==========================
+                // 🔥 ETAT DE PAIEMENT - VERSION FINALE
+                // ==========================
+
+                // 1️⃣ Calculer le nombre de mois écoulés depuis le début du paiement
+                $dateDebut = Carbon::parse($souscription->date_debut_paiement)->startOfMonth();
+                $aujourdhui = Carbon::now()->startOfMonth();
+                $moisEcoules = $dateDebut->diffInMonths($aujourdhui) + 1;
+
+                // 2️⃣ Le nombre de mois dus = minimum entre mois écoulés et nombre total de mensualités
+                $moisDus = min($moisEcoules, $souscription->nombre_mensualites);
+
+                // 3️⃣ Montant mensuel
+                $montantMensuel = (float) $souscription->terrain->montant_mensuel;
+
+                // 4️⃣ Montant total qui devrait être payé jusqu'à aujourd'hui
+                $montantDuJusquaMaintenant = $moisDus * $montantMensuel;
+
+                // 5️⃣ Montant réellement payé (déjà calculé plus haut)
+                // $montantPaye est déjà disponible
+
+                // 6️⃣ Nombre de mensualités réellement payées
+                $mensualitePayees = $montantMensuel > 0 ? floor($montantPaye / $montantMensuel) : 0;
+
+                // 7️⃣ Calculer l'écart EN MOIS (différence entre mensualités payées et mois dus)
+                $ecartEnMois = $mensualitePayees - $moisDus;
+
+                // 8️⃣ Calculer l'écart EN MONTANT
+                $ecartEnMontant = $montantPaye - $montantDuJusquaMaintenant;
+
+                // 9️⃣ Déterminer le statut et les détails
+                if ($ecartEnMois < 0) { 
+                    // 🔴 EN RETARD
+                    $moisEnRetard = abs($ecartEnMois);
+                    $montantEnRetard = abs($ecartEnMontant);
+                    
+                    $etatPaiement = [
+                        'statut' => 'en_retard',
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
+                        'retard' => [
+                            'mois_en_retard' => (int)$moisEnRetard,
+                            'montant_en_retard' => $montantEnRetard,
+                        ],
+                        'avance' => '',
+                    ];
+                    
+                } elseif ($ecartEnMois > 0) { 
+                    // 🟢 EN AVANCE
+                    $moisEnAvance = $ecartEnMois;
+                    $montantEnAvance = $ecartEnMontant;
+                    
+                    $etatPaiement = [
+                        'statut' => 'en_avance',
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
+                        'avance' => [
+                            'mois_en_avance' => (int)$moisEnAvance,
+                            'montant_en_avance' => $montantEnAvance,
+                        ],
+                        'retard' => '',
+                    ];
+                    
+                } else {
+                    // 🟡 À JOUR
+                    $etatPaiement = [
+                        'statut' => 'a_jour',
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
+                        'retard' => '',
+                        'avance' => '',
+                    ];
+                }
+
+                // Injecter dans l'objet retourné
                 $souscription->prix_total_terrain = $prixTotal;
                 $souscription->montant_paye = $montantPaye;
                 $souscription->reste_a_payer = max($reste, 0);
                 $souscription->date_prochain = $dateProchain;
-                $souscription->statut_dynamique = $statut; // ⚡ Nouveau champ calculé
+                $souscription->statut_dynamique = $statut;
+                $souscription->etat_paiement = $etatPaiement;
 
                 return $souscription;
             });
