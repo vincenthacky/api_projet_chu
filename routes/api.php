@@ -43,11 +43,13 @@ Route::middleware('type:superAdmin,admin,user')->group(function () {
     Route::get('/utilisateurs-souscriptions', [UtilisateurController::class, 'indexWithSouscriptions']);
 
     Route::get('souscriptions/utilisateur', [SouscriptionController::class, 'indexUtilisateur']);
+    Route::get('souscriptions/groupe-utilisateur', [SouscriptionController::class, 'groupeByUser']);
     Route::get('reclamations/utilisateur', [ReclamationController::class, 'indexUtilisateur']);
     Route::get('recompenses/utilisateur', [RecompenseController::class, 'indexUtilisateur']);
     Route::get('paiements/utilisateur', [PlanPaiementController::class, 'indexUtilisateur']);
     Route::get('documents/utilisateur', [DocumentController::class, 'indexUtilisateur']);
     Route::get('terrains/utilisateur', [TerrainController::class, 'indexUtilisateur']);
+    Route::get('paiement-groupes', [PlanPaiementController::class, 'groupByUser']);
 
     // web.php ou api.php
    Route::post('utilisateurs/{id}/update', [UtilisateurController::class, 'update']);

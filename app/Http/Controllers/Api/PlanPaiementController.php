@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PlanPaiement;
+use App\Models\Utilisateur;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Souscription;
 use Illuminate\Support\Facades\DB;
@@ -64,6 +65,87 @@ class PlanPaiementController extends Controller
             return $this->responseError("Erreur lors de la récupération des paiements : " . $e->getMessage(), 500);
         }
     }
+    
+    
+    
+    
+    public function groupByUser(Request $request)
+{
+    try {
+        $perPage = $request->input('per_page', 15);
+        $search  = $request->input('search');
+        
+        $query = Utilisateur::with(['paiements' => function($q) {
+                $q->orderBy('date_paiement_effectif', 'desc');
+            }])
+            ->whereHas('paiements'); 
+        
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nom', 'like', "%{$search}%")
+                ->orWhere('prenom', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('matricule', 'like', "%{$search}%");
+            });
+        }
+       
+        // 📊 Calculer le montant total payé GLOBAL (tous les paiements de tous les utilisateurs)
+        $montantPayeGlobal = PlanPaiement::whereNotNull('date_paiement_effectif')
+                                         ->sum('montant_paye');
+        
+        // ✅ Tri par la date de paiement la plus récente
+        $query->orderByDesc(
+            PlanPaiement::select('date_paiement_effectif')
+                ->join('Souscription', 'PlanPaiement.id_souscription', '=', 'Souscription.id_souscription')
+                ->whereColumn('Souscription.id_utilisateur', 'Utilisateur.id_utilisateur')
+                ->orderBy('date_paiement_effectif', 'desc')
+                ->limit(1)
+        );
+        
+        $utilisateurs = $query->paginate($perPage);
+        
+        // 📊 Calculer le montant total payé pour la PAGE EN COURS uniquement
+        $montantPayePageCourante = 0;
+        foreach ($utilisateurs->items() as $utilisateur) {
+            $montantPayePageCourante += $utilisateur->paiements()
+                                                    ->whereNotNull('date_paiement_effectif')
+                                                    ->sum('montant_paye');
+        }
+        
+        $totals = [
+            'total_mensualites' => PlanPaiement::count(),
+            'total_paye_a_temps' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_PAYE_A_TEMPS)->count(),
+            'total_en_retard' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_PAYE_EN_RETARD)->count(),
+            'total_en_attente' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_EN_ATTENTE)->count(),
+            'montant_paye_global' => $montantPayeGlobal, // ✅ Tous les paiements
+            'montant_paye_page_courante' => $montantPayePageCourante, // ✅ Page actuelle uniquement
+        ];
+        
+        return response()->json([
+            'success' => true,
+            'status_code' => 200,
+            'message' => "Liste des utilisateurs avec paiements récupérée avec succès",
+            'data' => $utilisateurs->items(),
+            'pagination' => [
+                'total' => $utilisateurs->total(),
+                'per_page' => $utilisateurs->perPage(),
+                'current_page' => $utilisateurs->currentPage(),
+                'last_page' => $utilisateurs->lastPage(),
+                'from' => $utilisateurs->firstItem(),
+                'to' => $utilisateurs->lastItem(),
+            ],
+            'statistiques' => $totals,
+        ]);
+        
+    } catch (\Exception $e) {
+        return $this->responseError("Erreur lors de la récupération des données : " . $e->getMessage(), 500);
+    }
+}
+    
+    
+    
+    
+    
 
     /**
      * Récupère tous les paiements avec pagination et recherche avancée.
@@ -89,17 +171,17 @@ class PlanPaiementController extends Controller
                 });
             }
 
+             // 📊 Calcul des statistiques AVANT la pagination
+            $totals = [
+                'total_mensualites' => (clone $query)->count(),
+                'total_paye_a_temps' => (clone $query)->where('statut_versement', PlanPaiement::STATUT_PAYE_A_TEMPS)->count(),
+                'total_en_retard' => (clone $query)->where('statut_versement', PlanPaiement::STATUT_PAYE_EN_RETARD)->count(),
+                'total_en_attente' => (clone $query)->where('statut_versement', PlanPaiement::STATUT_EN_ATTENTE)->count(),
+            ];
+
             $paiements = $query->orderBy('date_limite_versement', 'desc')
                                ->paginate($perPage);
 
-
-            // Calcul des statistiques
-            $totals = [
-                'total_mensualites' => PlanPaiement::count(),
-                'total_paye_a_temps' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_PAYE_A_TEMPS)->count(),
-                'total_en_retard' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_PAYE_EN_RETARD)->count(),
-                'total_en_attente' => PlanPaiement::where('statut_versement', PlanPaiement::STATUT_EN_ATTENTE)->count(),
-            ];
 
             return response()->json([
             'success' => true,

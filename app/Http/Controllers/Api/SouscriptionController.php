@@ -99,6 +99,168 @@ class SouscriptionController extends Controller
             return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
         }
     }
+    
+    
+    
+//     public function groupeByUser(Request $request)
+// {
+//     try {
+//         $perPage = $request->input('per_page', 15);
+//         $search  = $request->input('search');
+
+//         // Récupérer les utilisateurs avec leurs souscriptions actives
+//         $query = Utilisateur::with(['souscriptions' => function($q) {
+//                 $q->with(['terrain', 'admin', 'planpaiements'])
+//                   ->where('statut_souscription', '=', Souscription::STATUT_ACTIVE)
+//                   ->orderBy('created_at', 'desc');
+//             }])
+//             ->whereHas('souscriptions', function($q) {
+//                 $q->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
+//             });
+
+//         if ($search) {
+//             $query->where(function ($q) use ($search) {
+//                 $q->where('nom', 'like', "%{$search}%")
+//                   ->orWhere('prenom', 'like', "%{$search}%")
+//                   ->orWhere('email', 'like', "%{$search}%")
+//                   ->orWhere('matricule', 'like', "%{$search}%")
+//                   ->orWhereHas('souscriptions', function($q2) use ($search) {
+//                       $q2->where('id_souscription', 'like', "%{$search}%")
+//                          ->orWhereHas('terrain', function ($q3) use ($search) {
+//                              $q3->where('libelle', 'like', "%{$search}%")
+//                                 ->orWhere('localisation', 'like', "%{$search}%");
+//                          });
+//                   });
+//             });
+//         }
+
+//         // 📊 Calculer les statistiques globales AVANT la pagination (sur tous les utilisateurs)
+//         $tousLesUtilisateurs = clone $query;
+//         $tousLesUtilisateurs = $tousLesUtilisateurs->with(['souscriptions' => function($q) {
+//             $q->with(['terrain', 'planpaiements'])
+//               ->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
+//         }])->get();
+
+//         $statsGlobales = [
+//             'nbr_total_utilisateurs' => $tousLesUtilisateurs->count(),
+//             'nbr_total_souscriptions' => 0,
+//             'montant_total' => 0,
+//             'total_deja_paye' => 0,
+//             'total_reste_a_payer' => 0,
+//         ];
+
+//         foreach ($tousLesUtilisateurs as $user) {
+//             foreach ($user->souscriptions as $souscription) {
+//                 $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
+//                 $montantPaye = $souscription->planpaiements()
+//                                             ->whereNotNull('date_paiement_effectif')
+//                                             ->sum('montant_paye');
+//                 $reste = $prixTotal - $montantPaye;
+
+//                 $statsGlobales['nbr_total_souscriptions']++;
+//                 $statsGlobales['montant_total'] += $prixTotal;
+//                 $statsGlobales['total_deja_paye'] += $montantPaye;
+//                 $statsGlobales['total_reste_a_payer'] += max($reste, 0);
+//             }
+//         }
+
+//         // Paginer les résultats
+//         $utilisateurs = $query->orderBy('created_at', 'desc')
+//                               ->paginate($perPage);
+
+//         // 🔥 Enrichir chaque souscription de chaque utilisateur (uniquement pour la page en cours)
+//         $utilisateurs->getCollection()->transform(function ($utilisateur) {
+            
+//             // Variables pour les statistiques par utilisateur
+//             $totalSouscriptions = 0;
+//             $montantTotal = 0;
+//             $totalPaye = 0;
+//             $totalResteAPayer = 0;
+
+//             $utilisateur->souscriptions->transform(function ($souscription) use (&$totalSouscriptions, &$montantTotal, &$totalPaye, &$totalResteAPayer) {
+//                 // Prix total du terrain
+//                 $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
+
+//                 // Montant payé
+//                 $montantPaye = $souscription->planpaiements()
+//                                             ->whereNotNull('date_paiement_effectif')
+//                                             ->sum('montant_paye');
+
+//                 // Reste à payer
+//                 $reste = $prixTotal - $montantPaye;
+
+//                 // ✅ Détermination du statut dynamique
+//                 if ($montantPaye == 0) {
+//                     $statut = Souscription::STATUT_EN_ATTENTE;
+//                 } elseif ($reste <= 0) {
+//                     $statut = Souscription::STATUT_TERMINEE;
+//                 } else {
+//                     $statut = Souscription::STATUT_EN_COUR;
+//                 }
+
+//                 // ✅ Détermination de la date du prochain paiement
+//                 $dernierPaiement = $souscription->planpaiements()
+//                                                 ->whereNotNull('date_paiement_effectif')
+//                                                 ->orderBy('date_paiement_effectif', 'desc')
+//                                                 ->first();
+
+//                 if ($dernierPaiement) {
+//                     $dateProchain = Carbon::parse($dernierPaiement->date_paiement_effectif)
+//                                             ->addMonthNoOverflow()
+//                                             ->format('Y-m-d');
+//                 } else {
+//                     $dateProchain = Carbon::parse($souscription->date_debut_paiement ?? $souscription->date_souscription)
+//                                             ->addMonthNoOverflow()
+//                                             ->format('Y-m-d');
+//                 }
+
+//                 // Injecter dans l'objet retourné
+//                 $souscription->prix_total_terrain = $prixTotal;
+//                 $souscription->montant_paye = $montantPaye;
+//                 $souscription->reste_a_payer = max($reste, 0);
+//                 $souscription->date_prochain = $dateProchain;
+//                 $souscription->statut_dynamique = $statut;
+
+//                 // 📊 Accumuler les statistiques par utilisateur
+//                 $totalSouscriptions++;
+//                 $montantTotal += $prixTotal;
+//                 $totalPaye += $montantPaye;
+//                 $totalResteAPayer += max($reste, 0);
+
+//                 return $souscription;
+//             });
+
+//             // 📊 Ajouter les statistiques à l'utilisateur
+//             $utilisateur->statistiques = [
+//                 'nbr_total_souscriptions' => $totalSouscriptions,
+//                 'montant_total' => $montantTotal,
+//                 'total_deja_paye' => $totalPaye,
+//                 'total_reste_a_payer' => $totalResteAPayer,
+//             ];
+
+//             return $utilisateur;
+//         });
+
+//         return response()->json([
+//             'success' => true,
+//             'status_code' => 200,
+//             'message' => "Liste des utilisateurs avec leurs souscriptions",
+//             'data' => $utilisateurs->items(),
+//             'pagination' => [
+//                 'total' => $utilisateurs->total(),
+//                 'per_page' => $utilisateurs->perPage(),
+//                 'current_page' => $utilisateurs->currentPage(),
+//                 'last_page' => $utilisateurs->lastPage(),
+//                 'from' => $utilisateurs->firstItem(),
+//                 'to' => $utilisateurs->lastItem(),
+//             ],
+//             'statistiques_globales' => $statsGlobales,
+//         ]);
+
+//     } catch (\Exception $e) {
+//         return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
+//     }
+// }
 
 
 
@@ -106,6 +268,252 @@ class SouscriptionController extends Controller
     /**
      * Récupère toutes les souscriptions utilisateur connecter avec pagination et recherche avancée.
      */
+
+    public function groupeByUser(Request $request)
+{
+    try {
+        $perPage = $request->input('per_page', 15);
+        $search  = $request->input('search');
+
+        // Récupérer les utilisateurs avec leurs souscriptions actives
+        $query = Utilisateur::with(['souscriptions' => function($q) {
+                $q->with(['terrain', 'admin', 'planpaiements'])
+                  ->where('statut_souscription', '=', Souscription::STATUT_ACTIVE)
+                  ->orderBy('created_at', 'desc');
+            }])
+            ->whereHas('souscriptions', function($q) {
+                $q->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
+            });
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nom', 'like', "%{$search}%")
+                  ->orWhere('prenom', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('matricule', 'like', "%{$search}%")
+                  ->orWhereHas('souscriptions', function($q2) use ($search) {
+                      $q2->where('id_souscription', 'like', "%{$search}%")
+                         ->orWhereHas('terrain', function ($q3) use ($search) {
+                             $q3->where('libelle', 'like', "%{$search}%")
+                                ->orWhere('localisation', 'like', "%{$search}%");
+                         });
+                  });
+            });
+        }
+
+        // 📊 Calculer les statistiques globales AVANT la pagination (sur tous les utilisateurs)
+        $tousLesUtilisateurs = clone $query;
+        $tousLesUtilisateurs = $tousLesUtilisateurs->with(['souscriptions' => function($q) {
+            $q->with(['terrain', 'planpaiements'])
+              ->where('statut_souscription', '=', Souscription::STATUT_ACTIVE);
+        }])->get();
+
+        $statsGlobales = [
+            'nbr_total_utilisateurs' => $tousLesUtilisateurs->count(),
+            'nbr_total_souscriptions' => 0,
+            'montant_total' => 0,
+            'total_deja_paye' => 0,
+            'total_reste_a_payer' => 0,
+        ];
+
+        foreach ($tousLesUtilisateurs as $user) {
+            foreach ($user->souscriptions as $souscription) {
+                $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
+                $montantPaye = $souscription->planpaiements()
+                                            ->whereNotNull('date_paiement_effectif')
+                                            ->sum('montant_paye');
+                $reste = $prixTotal - $montantPaye;
+
+                $statsGlobales['nbr_total_souscriptions']++;
+                $statsGlobales['montant_total'] += $prixTotal;
+                $statsGlobales['total_deja_paye'] += $montantPaye;
+                $statsGlobales['total_reste_a_payer'] += max($reste, 0);
+            }
+        }
+
+        // Paginer les résultats
+        $utilisateurs = $query->orderBy('created_at', 'desc')
+                              ->paginate($perPage);
+
+        // 🔥 Enrichir chaque souscription de chaque utilisateur (uniquement pour la page en cours)
+        $utilisateurs->getCollection()->transform(function ($utilisateur) {
+            
+            // Variables pour les statistiques par utilisateur
+            $totalSouscriptions = 0;
+            $montantTotal = 0;
+            $totalPaye = 0;
+            $totalResteAPayer = 0;
+
+            $utilisateur->souscriptions->transform(function ($souscription) use (&$totalSouscriptions, &$montantTotal, &$totalPaye, &$totalResteAPayer) {
+                // Prix total du terrain
+                $prixTotal = $souscription->terrain->montant_mensuel * $souscription->nombre_mensualites;
+
+                // Montant payé
+                $montantPaye = $souscription->planpaiements()
+                                            ->whereNotNull('date_paiement_effectif')
+                                            ->sum('montant_paye');
+
+                // Reste à payer
+                $reste = $prixTotal - $montantPaye;
+
+                // ✅ Détermination du statut dynamique
+                if ($montantPaye == 0) {
+                    $statut = Souscription::STATUT_EN_ATTENTE;
+                } elseif ($reste <= 0) {
+                    $statut = Souscription::STATUT_TERMINEE;
+                } else {
+                    $statut = Souscription::STATUT_EN_COUR;
+                }
+
+                // ✅ Détermination de la date du prochain paiement
+                $dernierPaiement = $souscription->planpaiements()
+                                                ->whereNotNull('date_paiement_effectif')
+                                                ->orderBy('date_paiement_effectif', 'desc')
+                                                ->first();
+
+                if ($dernierPaiement) {
+                    $dateProchain = Carbon::parse($dernierPaiement->date_paiement_effectif)
+                                            ->addMonthNoOverflow()
+                                            ->format('Y-m-d');
+                } else {
+                    $dateProchain = Carbon::parse($souscription->date_debut_paiement ?? $souscription->date_souscription)
+                                            ->addMonthNoOverflow()
+                                            ->format('Y-m-d');
+                }
+
+                // ==========================
+                // 🔥 AJOUT : ETAT DE PAIEMENT
+                // ==========================
+               // ==========================
+                // 🔥 ETAT DE PAIEMENT - VERSION FINALE
+                // ==========================
+
+                // 1️⃣ Calculer le nombre de mois écoulés depuis le début du paiement
+                $dateDebut = Carbon::parse($souscription->date_debut_paiement)->startOfMonth();
+                $aujourdhui = Carbon::now()->startOfMonth();
+                $moisEcoules = $dateDebut->diffInMonths($aujourdhui) + 1;
+
+                // 2️⃣ Le nombre de mois dus = minimum entre mois écoulés et nombre total de mensualités
+                $moisDus = min($moisEcoules, $souscription->nombre_mensualites);
+
+                // 3️⃣ Montant mensuel
+                $montantMensuel = (float) $souscription->terrain->montant_mensuel;
+
+                // 4️⃣ Montant total qui devrait être payé jusqu'à aujourd'hui
+                $montantDuJusquaMaintenant = $moisDus * $montantMensuel;
+
+                // 5️⃣ Montant réellement payé (déjà calculé plus haut)
+                // $montantPaye est déjà disponible
+
+                // 6️⃣ Nombre de mensualités réellement payées
+                $mensualitePayees = $montantMensuel > 0 ? floor($montantPaye / $montantMensuel) : 0;
+
+                // 7️⃣ Calculer l'écart EN MOIS (différence entre mensualités payées et mois dus)
+                $ecartEnMois = $mensualitePayees - $moisDus;
+
+                // 8️⃣ Calculer l'écart EN MONTANT
+                $ecartEnMontant = $montantPaye - $montantDuJusquaMaintenant;
+
+                // 9️⃣ Déterminer le statut et les détails
+                if ($ecartEnMois < 0) { 
+                    // 🔴 EN RETARD
+                    $moisEnRetard = abs($ecartEnMois);
+                    $montantEnRetard = abs($ecartEnMontant);
+                    
+                    $etatPaiement = [
+                        'statut' => 'en_retard',
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
+                        'retard' => [
+                            'mois_en_retard' => (int)$moisEnRetard,
+                            'montant_en_retard' => $montantEnRetard,
+                        ],
+                        'avance' => '',
+                    ];
+                    
+                } elseif ($ecartEnMois > 0) { 
+                    // 🟢 EN AVANCE
+                    $moisEnAvance = $ecartEnMois;
+                    $montantEnAvance = $ecartEnMontant;
+                    
+                    $etatPaiement = [
+                        'statut' => 'en_avance',
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
+                        'avance' => [
+                            'mois_en_avance' => (int)$moisEnAvance,
+                            'montant_en_avance' => $montantEnAvance,
+                        ],
+                        'retard' => '',
+                    ];
+                    
+                } else {
+                    // 🟡 À JOUR
+                    $etatPaiement = [
+                        'statut' => 'a_jour',
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
+                        'retard' => '',
+                        'avance' => '',
+                    ];
+                }
+
+                // Injecter dans l'objet retourné
+                $souscription->prix_total_terrain = $prixTotal;
+                $souscription->montant_paye = $montantPaye;
+                $souscription->reste_a_payer = max($reste, 0);
+                $souscription->date_prochain = $dateProchain;
+                $souscription->statut_dynamique = $statut;
+                $souscription->etat_paiement = $etatPaiement;
+
+                // 📊 Accumuler les statistiques par utilisateur
+                $totalSouscriptions++;
+                $montantTotal += $prixTotal;
+                $totalPaye += $montantPaye;
+                $totalResteAPayer += max($reste, 0);
+
+                return $souscription;
+            });
+
+            // 📊 Ajouter les statistiques à l'utilisateur
+            $utilisateur->statistiques = [
+                'nbr_total_souscriptions' => $totalSouscriptions,
+                'montant_total' => $montantTotal,
+                'total_deja_paye' => $totalPaye,
+                'total_reste_a_payer' => $totalResteAPayer,
+            ];
+
+            return $utilisateur;
+        });
+
+        return response()->json([
+            'success' => true,
+            'status_code' => 200,
+            'message' => "Liste des utilisateurs avec leurs souscriptions",
+            'data' => $utilisateurs->items(),
+            'pagination' => [
+                'total' => $utilisateurs->total(),
+                'per_page' => $utilisateurs->perPage(),
+                'current_page' => $utilisateurs->currentPage(),
+                'last_page' => $utilisateurs->lastPage(),
+                'from' => $utilisateurs->firstItem(),
+                'to' => $utilisateurs->lastItem(),
+            ],
+            'statistiques_globales' => $statsGlobales,
+        ]);
+
+    } catch (\Exception $e) {
+        return $this->responseError("Erreur lors de la récupération des souscriptions : " . $e->getMessage(), 500);
+    }
+}
+
+
     public function indexUtilisateur(Request $request)
     {
         try {
@@ -170,12 +578,96 @@ class SouscriptionController extends Controller
                                         ->format('Y-m-d');
                 }
 
-                // Injecter dans l’objet retourné
+                // ==========================
+                // 🔥 AJOUT : ETAT DE PAIEMENT
+                // ==========================
+               // ==========================
+                // 🔥 ETAT DE PAIEMENT - VERSION FINALE
+                // ==========================
+
+                // 1️⃣ Calculer le nombre de mois écoulés depuis le début du paiement
+                $dateDebut = Carbon::parse($souscription->date_debut_paiement)->startOfMonth();
+                $aujourdhui = Carbon::now()->startOfMonth();
+                $moisEcoules = $dateDebut->diffInMonths($aujourdhui) + 1;
+
+                // 2️⃣ Le nombre de mois dus = minimum entre mois écoulés et nombre total de mensualités
+                $moisDus = min($moisEcoules, $souscription->nombre_mensualites);
+
+                // 3️⃣ Montant mensuel
+                $montantMensuel = (float) $souscription->terrain->montant_mensuel;
+
+                // 4️⃣ Montant total qui devrait être payé jusqu'à aujourd'hui
+                $montantDuJusquaMaintenant = $moisDus * $montantMensuel;
+
+                // 5️⃣ Montant réellement payé (déjà calculé plus haut)
+                // $montantPaye est déjà disponible
+
+                // 6️⃣ Nombre de mensualités réellement payées
+                $mensualitePayees = $montantMensuel > 0 ? floor($montantPaye / $montantMensuel) : 0;
+
+                // 7️⃣ Calculer l'écart EN MOIS (différence entre mensualités payées et mois dus)
+                $ecartEnMois = $mensualitePayees - $moisDus;
+
+                // 8️⃣ Calculer l'écart EN MONTANT
+                $ecartEnMontant = $montantPaye - $montantDuJusquaMaintenant;
+
+                // 9️⃣ Déterminer le statut et les détails
+                if ($ecartEnMois < 0) { 
+                    // 🔴 EN RETARD
+                    $moisEnRetard = abs($ecartEnMois);
+                    $montantEnRetard = abs($ecartEnMontant);
+                    
+                    $etatPaiement = [
+                        'statut' => 'en_retard',
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
+                        'retard' => [
+                            'mois_en_retard' => (int)$moisEnRetard,
+                            'montant_en_retard' => $montantEnRetard,
+                        ],
+                        'avance' => '',
+                    ];
+                    
+                } elseif ($ecartEnMois > 0) { 
+                    // 🟢 EN AVANCE
+                    $moisEnAvance = $ecartEnMois;
+                    $montantEnAvance = $ecartEnMontant;
+                    
+                    $etatPaiement = [
+                        'statut' => 'en_avance',
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
+                        'avance' => [
+                            'mois_en_avance' => (int)$moisEnAvance,
+                            'montant_en_avance' => $montantEnAvance,
+                        ],
+                        'retard' => '',
+                    ];
+                    
+                } else {
+                    // 🟡 À JOUR
+                    $etatPaiement = [
+                        'statut' => 'a_jour',
+                        'mois_ecoules' => $moisEcoules,
+                        'mensualites_payees' => (int)$mensualitePayees,
+                        'montant_du' => $montantDuJusquaMaintenant,
+                        'montant_paye' => $montantPaye,
+                        'retard' => '',
+                        'avance' => '',
+                    ];
+                }
+
+                // Injecter dans l'objet retourné
                 $souscription->prix_total_terrain = $prixTotal;
                 $souscription->montant_paye = $montantPaye;
                 $souscription->reste_a_payer = max($reste, 0);
                 $souscription->date_prochain = $dateProchain;
-                $souscription->statut_dynamique = $statut; // ⚡ Nouveau champ calculé
+                $souscription->statut_dynamique = $statut;
+                $souscription->etat_paiement = $etatPaiement;
 
                 return $souscription;
             });
